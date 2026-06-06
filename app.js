@@ -13,7 +13,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let usuarioAtual = "";
-let todasFigurinhas = []; // Guarda todas as figurinhas localmente para filtrar sem recarregar o banco
+let todasFigurinhas = []; 
+let pacotesDisponiveis = new Set();
+let arquivoPendenteUpload = null; // Guarda a imagem temporariamente enquanto a janela de pacote está aberta
 
 const avatares = {
     "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
@@ -27,7 +29,7 @@ window.entrarNaSala = function(nome) {
     
     carregarMensagens();
     carregarGavetaFigurinhas(); 
-    renderizarRecentes(); // Carrega o histórico de recentes na hora que entra
+    renderizarRecentes(); 
     
     document.getElementById("message-input").addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
@@ -37,8 +39,6 @@ window.entrarNaSala = function(nome) {
     });
 };
 
-/* --- TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO GERAL --- */
-
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => console.error(err));
@@ -47,9 +47,7 @@ window.toggleFullScreen = function() {
     }
 };
 
-window.mudarTransparencia = function(valor) {
-    document.documentElement.style.setProperty('--bg-alpha', valor);
-};
+window.mudarTransparencia = function(valor) { document.documentElement.style.setProperty('--bg-alpha', valor); };
 
 window.apagarHistorico = async function() {
     if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat. Tem certeza?")) {
@@ -71,8 +69,6 @@ window.editarMensagem = async function(idMsg) {
         await updateDoc(doc(db, "mensagens", idMsg), { texto: novoTexto, editado: true });
     }
 };
-
-/* --- PAINÉIS --- */
 
 function esconderPainéis() {
     document.getElementById("emoji-picker").classList.add("hidden");
@@ -103,42 +99,35 @@ window.enviarMensagem = async function() {
     } catch (e) { console.error(e); }
 };
 
-/* --- NOVO: SISTEMA DE PACOTES, EXCLUSÃO E RECENTES --- */
-
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
     onSnapshot(q, (snapshot) => {
         todasFigurinhas = [];
-        let pacotes = new Set();
+        pacotesDisponiveis.clear();
         
         snapshot.forEach((documento) => {
             const fig = documento.data();
-            fig.id = documento.id; // Guarda o ID do banco para poder excluir depois
+            fig.id = documento.id; 
             todasFigurinhas.push(fig);
-            if(fig.pacote) pacotes.add(fig.pacote); // Extrai os pacotes únicos
+            if(fig.pacote) pacotesDisponiveis.add(fig.pacote); 
         });
 
-        // Atualiza a lista dropdown de pacotes
         const select = document.getElementById("pack-filter");
         const valorAtual = select.value;
         select.innerHTML = '<option value="Todos">Todos os Pacotes</option>';
-        pacotes.forEach(p => {
-            select.innerHTML += `<option value="${p}">${p}</option>`;
-        });
-        if(pacotes.has(valorAtual)) select.value = valorAtual;
+        pacotesDisponiveis.forEach(p => select.innerHTML += `<option value="${p}">${p}</option>`);
+        if(pacotesDisponiveis.has(valorAtual)) select.value = valorAtual;
 
         renderizarGaveta();
     });
 }
 
-// Renderiza o grid principal baseado no pacote selecionado
 window.renderizarGaveta = function() {
     const grid = document.getElementById("sticker-grid");
     grid.innerHTML = ""; 
     const pacoteSelecionado = document.getElementById("pack-filter").value;
     
     todasFigurinhas.forEach((fig) => {
-        // Se o pacote for "Todos" passa tudo, senão só renderiza os do pacote correto
         if (pacoteSelecionado !== "Todos" && fig.pacote !== pacoteSelecionado) return;
 
         const wrapper = document.createElement("div");
@@ -150,15 +139,11 @@ window.renderizarGaveta = function() {
         imgElement.title = fig.pacote ? `Pacote: ${fig.pacote}` : "Sem pacote";
         imgElement.onclick = function() { enviarFigurinhaSalva(fig.url); };
         
-        // Botão de Excluir que aparece no hover
         const btnDel = document.createElement("button");
         btnDel.className = "btn-delete-sticker";
         btnDel.innerText = "×";
         btnDel.title = "Apagar Figurinha";
-        btnDel.onclick = (e) => {
-            e.stopPropagation(); // Evita que clique na imagem sem querer
-            excluirDaGaveta(fig.id);
-        };
+        btnDel.onclick = (e) => { e.stopPropagation(); excluirDaGaveta(fig.id); };
 
         wrapper.appendChild(imgElement);
         wrapper.appendChild(btnDel);
@@ -175,7 +160,6 @@ window.excluirDaGaveta = async function(idFigurinha) {
 function renderizarRecentes() {
     const grid = document.getElementById("recent-stickers-grid");
     grid.innerHTML = "";
-    // Puxa as ultimas 6 da memória do navegador local
     let recentes = JSON.parse(localStorage.getItem("recentes_nosso_espaco")) || [];
     
     if (recentes.length === 0) {
@@ -186,25 +170,82 @@ function renderizarRecentes() {
     recentes.forEach(url => {
         const img = document.createElement("img");
         img.src = url;
-        img.className = "sticker-item";
+        img.className = "sticker-item"; // Agora usa a classe ajustada no CSS
         img.onclick = () => enviarFigurinhaSalva(url);
         grid.appendChild(img);
     });
 }
 
-window.salvarNovaFigurinha = async function(event) {
+/* --- NOVO: LÓGICA DO MODAL DE UPLOAD DE PACOTES --- */
+
+window.prepararUpload = function(event) {
     const file = event.target.files[0];
     if (!file) return;
-    event.target.value = ''; 
+    
     const maxTamanho = 800 * 1024; 
     if (file.size > maxTamanho) {
         alert("Imagem muito grande! Escolha uma de até 800KB.");
+        event.target.value = ''; 
         return;
     }
+    
+    arquivoPendenteUpload = file;
+    event.target.value = ''; // Limpa o input
+    
+    // Preenche as opções de pacotes no Modal
+    const selectUpload = document.getElementById("upload-pack-select");
+    selectUpload.innerHTML = '';
+    
+    // Lista os pacotes existentes
+    pacotesDisponiveis.forEach(p => selectUpload.innerHTML += `<option value="${p}">${p}</option>`);
+    
+    // Adiciona a opção de criar um novo
+    selectUpload.innerHTML += `<option value="NOVO" style="font-weight:bold; color:#5865F2;">+ Criar Novo Pacote...</option>`;
+    
+    // Se não tiver nenhum pacote ainda, força a criação do primeiro
+    if (pacotesDisponiveis.size === 0) {
+        selectUpload.value = "NOVO";
+    }
 
-    // Pede o nome do pacote para a imagem
-    const nomePacote = prompt("Em qual pacote deseja salvar essa figurinha? (ex: Memes, Amor, Engraçadas)", "Geral");
-    if (nomePacote === null || nomePacote.trim() === "") return; // Cancelou a operação
+    // Mostra o modal
+    document.getElementById("upload-modal").classList.remove("hidden");
+    toggleNewPackInput(); // Checa se precisa exibir o input de texto
+};
+
+window.fecharModalUpload = function() {
+    document.getElementById("upload-modal").classList.add("hidden");
+    arquivoPendenteUpload = null;
+    document.getElementById("new-pack-input").value = "";
+};
+
+window.toggleNewPackInput = function() {
+    const select = document.getElementById("upload-pack-select");
+    const inputNovo = document.getElementById("new-pack-input");
+    
+    if (select.value === "NOVO") {
+        inputNovo.classList.remove("hidden");
+        inputNovo.focus();
+    } else {
+        inputNovo.classList.add("hidden");
+    }
+};
+
+window.confirmarUpload = function() {
+    if (!arquivoPendenteUpload) return;
+    
+    const select = document.getElementById("upload-pack-select");
+    let nomePacote = select.value;
+    
+    if (nomePacote === "NOVO") {
+        nomePacote = document.getElementById("new-pack-input").value.trim();
+        if (nomePacote === "") {
+            alert("Digite o nome do novo pacote!");
+            return;
+        }
+    }
+    
+    // Fecha o modal antes de começar a converter
+    fecharModalUpload();
 
     const grid = document.getElementById("sticker-grid");
     const loadingId = "loading-" + Date.now();
@@ -216,15 +257,18 @@ window.salvarNovaFigurinha = async function(event) {
         try {
             await addDoc(collection(db, "gaveta_figurinhas"), { 
                 url: base64String, 
-                pacote: nomePacote.trim(), // Salva o nome do pacote no banco
+                pacote: nomePacote,
                 hora: serverTimestamp() 
             });
             enviarFigurinhaSalva(base64String);
         } catch (erro) {
-            document.getElementById(loadingId).innerText = "Erro ao salvar!";
+            console.error("Erro ao salvar", erro);
+        } finally {
+            const loadElement = document.getElementById(loadingId);
+            if(loadElement) loadElement.remove();
         }
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(arquivoPendenteUpload);
 };
 
 window.enviarFigurinhaSalva = async function(base64String) {
@@ -232,7 +276,6 @@ window.enviarFigurinhaSalva = async function(base64String) {
         await addDoc(collection(db, "mensagens"), { tipo: "figurinha", url: base64String, autor: usuarioAtual, hora: serverTimestamp() });
         esconderPainéis();
 
-        // Lógica para salvar a imagem nas "Recentes" (Máximo de 6 itens)
         let recentes = JSON.parse(localStorage.getItem("recentes_nosso_espaco")) || [];
         recentes = [base64String, ...recentes.filter(u => u !== base64String)].slice(0, 6);
         localStorage.setItem("recentes_nosso_espaco", JSON.stringify(recentes));
@@ -240,8 +283,6 @@ window.enviarFigurinhaSalva = async function(base64String) {
 
     } catch (erro) { console.error(erro); }
 };
-
-/* --- RENDERIZAÇÃO DAS MENSAGENS NO CHAT --- */
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
