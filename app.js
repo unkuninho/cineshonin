@@ -15,7 +15,7 @@ const db = getFirestore(app);
 let usuarioAtual = "";
 let todasFigurinhas = []; 
 let pacotesDisponiveis = new Set();
-let arquivoPendenteUpload = null; 
+let arquivosPendentesUpload = []; // Agora suporta vários arquivos
 
 const avatares = {
     "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
@@ -39,7 +39,7 @@ window.entrarNaSala = function(nome) {
     });
 };
 
-/* --- TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO GERAL --- */
+/* --- TELA CHEIA E HISTÓRICO --- */
 
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
@@ -108,7 +108,7 @@ window.enviarMensagem = async function() {
     } catch (e) { console.error(e); }
 };
 
-/* --- SISTEMA DE PACOTES E RECENTES --- */
+/* --- SISTEMA DE PACOTES --- */
 
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
@@ -187,21 +187,32 @@ function renderizarRecentes() {
     });
 }
 
-/* --- LÓGICA DO MODAL DE UPLOAD DE PACOTES --- */
+/* --- LÓGICA DO MODAL (UPLOAD MULTIPLO) --- */
 
 window.prepararUpload = function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (files.length === 0) return;
     
+    arquivosPendentesUpload = [];
     const maxTamanho = 800 * 1024; 
-    if (file.size > maxTamanho) {
-        alert("Imagem muito grande! Escolha uma de até 800KB.");
-        event.target.value = ''; 
-        return;
+    let ignoradas = 0;
+
+    // Filtra as imagens maiores que o limite e salva as boas
+    for (let i = 0; i < files.length; i++) {
+        if (files[i].size > maxTamanho) {
+            ignoradas++;
+        } else {
+            arquivosPendentesUpload.push(files[i]);
+        }
     }
-    
-    arquivoPendenteUpload = file;
+
+    if (ignoradas > 0) {
+        alert(`${ignoradas} imagem(ns) era(m) maior(es) que 800KB e não será(ão) enviada(s).`);
+    }
+
     event.target.value = ''; 
+    
+    if (arquivosPendentesUpload.length === 0) return;
     
     const selectUpload = document.getElementById("upload-pack-select");
     selectUpload.innerHTML = '';
@@ -213,20 +224,24 @@ window.prepararUpload = function(event) {
         selectUpload.value = "NOVO";
     }
 
+    // Atualiza o título do modal
+    document.getElementById("modal-title").innerText = arquivosPendentesUpload.length > 1
+        ? `Salvar ${arquivosPendentesUpload.length} Figurinhas`
+        : `Salvar Figurinha`;
+
     document.getElementById("upload-modal").classList.remove("hidden");
     toggleNewPackInput(); 
 };
 
 window.fecharModalUpload = function() {
     document.getElementById("upload-modal").classList.add("hidden");
-    arquivoPendenteUpload = null;
+    arquivosPendentesUpload = [];
     document.getElementById("new-pack-input").value = "";
 };
 
 window.toggleNewPackInput = function() {
     const select = document.getElementById("upload-pack-select");
     const inputNovo = document.getElementById("new-pack-input");
-    
     if (select.value === "NOVO") {
         inputNovo.classList.remove("hidden");
         inputNovo.focus();
@@ -235,11 +250,10 @@ window.toggleNewPackInput = function() {
     }
 };
 
-window.confirmarUpload = function() {
-    if (!arquivoPendenteUpload) return;
+window.confirmarUpload = async function() {
+    if (arquivosPendentesUpload.length === 0) return;
     
-    // Salva a imagem em uma variável segura ANTES de fechar o modal
-    const arquivoSeguro = arquivoPendenteUpload;
+    const arquivosSeguros = [...arquivosPendentesUpload];
     
     const select = document.getElementById("upload-pack-select");
     let nomePacote = select.value;
@@ -252,33 +266,48 @@ window.confirmarUpload = function() {
         }
     }
     
-    // Fecha o modal em paz, pois a imagem já está salva em 'arquivoSeguro'
     fecharModalUpload();
 
     const grid = document.getElementById("sticker-grid");
     const loadingId = "loading-" + Date.now();
-    grid.innerHTML += `<div id="${loadingId}" style="color: gray; font-size: 12px; width: 100%;">Salvando...</div>`;
+    grid.innerHTML += `<div id="${loadingId}" style="color: gray; font-size: 12px; width: 100%;">Salvando ${arquivosSeguros.length} imagem(ns)...</div>`;
     
-    const reader = new FileReader();
-    reader.onloadend = async function() {
-        const base64String = reader.result;
-        try {
-            await addDoc(collection(db, "gaveta_figurinhas"), { 
-                url: base64String, 
-                pacote: nomePacote,
-                hora: serverTimestamp() 
-            });
-            enviarFigurinhaSalva(base64String);
-        } catch (erro) {
-            console.error("Erro ao salvar", erro);
-        } finally {
-            const loadElement = document.getElementById(loadingId);
-            if(loadElement) loadElement.remove();
-        }
-    };
-    
-    // Usa a variável segura para fazer a leitura
-    reader.readAsDataURL(arquivoSeguro);
+    // Processa os arquivos sequencialmente para não sobrecarregar o navegador
+    for (let i = 0; i < arquivosSeguros.length; i++) {
+        const arquivo = arquivosSeguros[i];
+        const reader = new FileReader();
+
+        await new Promise((resolve) => {
+            reader.onloadend = async function() {
+                const base64String = reader.result;
+                try {
+                    await addDoc(collection(db, "gaveta_figurinhas"), { 
+                        url: base64String, 
+                        pacote: nomePacote,
+                        hora: serverTimestamp() 
+                    });
+
+                    // Se enviou apenas uma, manda direto pro chat. Se enviou várias, guarda apenas na gaveta para não floodar.
+                    if (arquivosSeguros.length === 1) {
+                        enviarFigurinhaSalva(base64String);
+                    } else {
+                        // Salva nas recentes silenciosamente
+                        let recentes = JSON.parse(localStorage.getItem("recentes_nosso_espaco")) || [];
+                        recentes = [base64String, ...recentes.filter(u => u !== base64String)].slice(0, 6);
+                        localStorage.setItem("recentes_nosso_espaco", JSON.stringify(recentes));
+                        renderizarRecentes();
+                    }
+                } catch (erro) {
+                    console.error("Erro ao salvar", erro);
+                }
+                resolve();
+            };
+            reader.readAsDataURL(arquivo);
+        });
+    }
+
+    const loadElement = document.getElementById(loadingId);
+    if(loadElement) loadElement.remove();
 };
 
 window.enviarFigurinhaSalva = async function(base64String) {
