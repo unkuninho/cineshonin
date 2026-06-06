@@ -6,190 +6,548 @@
     <title>Nosso Espaço</title>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
     <style>
-        :root { --bg-alpha: 0.6; }
+        :root { --bg-alpha: 0.75; }
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0c10; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: white; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: #0b0c10;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+        }
+
         .hidden { display: none !important; }
-        
-        /* --- ESTILO NETFLIX NA TELA DE LOGIN --- */
-        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #141414; }
-        
-        .login-title { font-size: 3.5vw; font-weight: 400; color: #fff; margin-bottom: 2em; letter-spacing: 2px; }
-        @media (max-width: 800px) { .login-title { font-size: 28px; } }
 
-        .profiles-container { display: flex; gap: 4vw; justify-content: center; align-items: center; }
-        
-        .profile-card { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
-        
-        .profile-avatar { width: 12vw; min-width: 100px; max-width: 160px; height: 12vw; min-height: 100px; max-height: 160px; border-radius: 4px; border: 3px solid transparent; box-sizing: border-box; transition: border-color 0.2s, transform 0.2s; object-fit: cover; }
-        
-        .profile-name { color: #808080; margin-top: 15px; font-size: 1.3rem; transition: color 0.2s; }
+        /* ── LOGIN ── */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(ellipse at 50% 40%, #1a1d2e 0%, #0b0c10 70%);
+            gap: 0;
+        }
 
-        /* Efeitos de Hover (Passar o mouse) */
-        .profile-card:hover .profile-avatar { border-color: white; transform: scale(1.05); }
-        .profile-card:hover .profile-name { color: white; }
-        /* --------------------------------------- */
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #fff 60%, #8b9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
+        .login-subtitle {
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 40px;
+        }
+
+        .login-cards {
+            display: flex;
+            gap: 20px;
+        }
+
+        .login-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 28px 36px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+        }
+
+        .login-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(88, 101, 242, 0.5);
+        }
+
+        .login-card img {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.15);
+        }
+
+        .login-card span {
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .login-card .login-tag {
+            font-size: 11px;
+            color: rgba(255,255,255,0.35);
+            font-weight: 400;
+        }
+
+        /* ── ROOM ── */
         #room-screen { position: relative; width: 100vw; height: 100vh; }
-        #video-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: black; }
-        video { width: 100%; height: 100%; object-fit: contain; } 
-        
-        #overlay-panel { position: absolute; bottom: 20px; right: 20px; width: 360px; background: rgba(15, 15, 15, var(--bg-alpha)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); transition: background 0.1s ease; }
-        
-        .top-controls { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 4px; }
-        .btn-top { background: transparent; border: none; cursor: pointer; font-size: 16px; padding: 4px 6px; border-radius: 6px; transition: 0.2s; color: white; }
-        .btn-top:hover { background: rgba(255,255,255,0.1); }
-        .btn-top.danger:hover { background: rgba(255, 77, 77, 0.2); }
-        #transparency-slider { width: 70px; cursor: pointer; }
 
-        #chat-box { height: 260px; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; }
-        #chat-box::-webkit-scrollbar { width: 6px; }
+        #video-container {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: black;
+        }
+
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        /* ── OVERLAY PANEL ── */
+        #overlay-panel {
+            position: absolute;
+            bottom: 20px; right: 20px;
+            width: 370px;
+            background: rgba(12, 12, 16, var(--bg-alpha));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+            transition: background 0.1s ease;
+        }
+
+        /* ── TOP CONTROLS ── */
+        .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+
+        #user-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.06);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            margin-right: auto;
+        }
+
+        .btn-top {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.08);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 8px;
+            border-radius: 8px;
+            transition: 0.2s;
+            color: white;
+            line-height: 1;
+        }
+
+        .btn-top:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .btn-top.danger:hover { background: rgba(255, 77, 77, 0.15); border-color: rgba(255,77,77,0.3); }
+
+        .transparency-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 4px 8px;
+        }
+
+        .transparency-wrap span {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap;
+        }
+
+        #transparency-slider {
+            width: 60px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            height: 3px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        #transparency-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #5865F2;
+            cursor: pointer;
+        }
+
+        /* ── SHARE BUTTON ── */
+        .btn-share {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 9px;
+            width: 100%;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+            letter-spacing: 0.1px;
+        }
+
+        .btn-share:hover {
+            background: rgba(255,255,255,0.09);
+            border-color: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        /* ── CHAT BOX ── */
+        #chat-box {
+            height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-track { background: transparent; }
-        #chat-box::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        #chat-box::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
 
-        .message-row { display: flex; width: 100%; margin-bottom: 12px; align-items: flex-end; position: relative; }
-        .message-row.own { justify-content: flex-end; }
+        /* ── MESSAGES ── */
+        .message-row {
+            display: flex;
+            width: 100%;
+            margin-bottom: 10px;
+            align-items: flex-end;
+            position: relative;
+            animation: msgIn 0.18s ease;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.own  { justify-content: flex-end; }
         .message-row.other { justify-content: flex-start; }
 
-        .avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .message-row.own .avatar { margin-left: 8px; }
-        .message-row.other .avatar { margin-right: 8px; }
+        .avatar {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
 
-        .message-bubble { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4; word-wrap: break-word; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
-        .message-row.own .message-bubble { background-color: #0084ff; color: #fff; border-bottom-right-radius: 4px; }
-        .message-row.other .message-bubble { background-color: #2b2d31; color: #e3e3e3; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
-        
-        .message-bubble.is-sticker { background: transparent !important; padding: 0; box-shadow: none; border: none; }
-        .sticker-img { max-width: 140px; max-height: 140px; object-fit: contain; border-radius: 8px; cursor: pointer; }
-        
-        .message-author { font-size: 11px; color: #a0a0a0; margin-bottom: 4px; display: block; font-weight: 600; }
+        .message-row.own   .avatar { margin-left: 7px; }
+        .message-row.other .avatar { margin-right: 7px; }
+
+        .message-bubble {
+            max-width: 78%;
+            padding: 9px 13px;
+            border-radius: 18px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message-row.own .message-bubble {
+            background: #5865F2;
+            color: #fff;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 2px 8px rgba(88, 101, 242, 0.35);
+        }
+
+        .message-row.other .message-bubble {
+            background: #25262b;
+            color: #e8e8e8;
+            border-bottom-left-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .message-bubble.is-sticker {
+            background: transparent !important;
+            padding: 0;
+            box-shadow: none;
+            border: none;
+        }
+
+        .sticker-img {
+            max-width: 130px; max-height: 130px;
+            object-fit: contain;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .message-author {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
         .message-row.own .message-author { display: none; }
 
-        .msg-actions { display: none; position: absolute; top: -15px; right: 15px; background: #1e1f22; border-radius: 8px; padding: 2px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 100; border: 1px solid rgba(255,255,255,0.1); }
+        /* ── ACTION BUTTONS ── */
+        .msg-actions {
+            display: none;
+            position: absolute;
+            top: -18px;
+            right: 12px;
+            background: #1e1f24;
+            border-radius: 8px;
+            padding: 2px 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            z-index: 100;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
         .message-row:hover .msg-actions { display: flex; gap: 2px; }
-        .btn-action { background: none; border: none; cursor: pointer; font-size: 12px; transition: 0.2s; padding: 4px; border-radius: 4px; }
-        .btn-action:hover { background: rgba(255,255,255,0.1); transform: scale(1.1); }
 
-        emoji-picker { position: absolute; bottom: 75px; right: 15px; z-index: 100; height: 320px; --background: #2b2d31; --border-color: rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        
-        #sticker-picker { position: absolute; bottom: 75px; right: 15px; width: 340px; height: 400px; background: #2b2d31; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: bold; font-size: 14px; gap: 8px; }
-        .pack-select { flex-grow: 1; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); outline: none; }
-        .btn-add-sticker { background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .btn-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.15s;
+            padding: 4px 5px;
+            border-radius: 5px;
+            opacity: 0.7;
+        }
+
+        .btn-action:hover { background: rgba(255,255,255,0.1); opacity: 1; transform: scale(1.15); }
+
+        /* ── PICKERS ── */
+        emoji-picker {
+            position: absolute;
+            bottom: 72px; right: 15px;
+            z-index: 100;
+            height: 320px;
+            --background: #1e1f24;
+            --border-color: rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+        }
+
+        #sticker-picker {
+            position: absolute;
+            bottom: 72px; right: 15px;
+            width: 310px; height: 310px;
+            background: #1e1f24;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            box-sizing: border-box;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+        }
+
+        .sticker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .btn-add-sticker {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
         .btn-add-sticker:hover { background: #4752C4; }
-        
-        .section-title { font-size: 11px; color: #aaa; margin: 4px 0; text-transform: uppercase; font-weight: bold; }
-        
-        #recent-stickers-grid { display: flex; gap: 8px; margin-bottom: 8px; padding-bottom: 4px; overflow-x: auto; align-items: center; }
-        #recent-stickers-grid::-webkit-scrollbar { height: 4px; }
-        #recent-stickers-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-        #recent-stickers-grid .sticker-item { width: 50px; height: 50px; min-width: 50px; flex-shrink: 0; object-fit: cover; }
 
-        #sticker-grid { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; align-content: flex-start; flex-grow: 1; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
-        .sticker-wrapper { position: relative; display: inline-block; width: 70px; height: 70px; }
-        .sticker-item { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; background: rgba(0,0,0,0.3); }
-        .sticker-item:hover { transform: scale(1.05); }
-        .btn-delete-sticker { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
-        .sticker-wrapper:hover .btn-delete-sticker { display: flex; }
+        #sticker-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            overflow-y: auto;
+            align-content: flex-start;
+            flex-grow: 1;
+        }
 
-        .input-group { display: flex; gap: 8px; align-items: center; }
-        .btn-icon { background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 0 4px; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; }
-        .btn-icon:hover { transform: scale(1.1); }
-        input[type="text"] { flex-grow: 1; padding: 12px 16px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: white; outline: none; transition: border 0.2s; width: 100%; }
-        input[type="text"]:focus { border: 1px solid #5865F2; }
-        .btn-enviar { padding: 0 16px; height: 42px; border-radius: 24px; background-color: #5865F2; color: white; border: none; cursor: pointer; font-weight: bold; }
-        .btn-share { background-color: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 10px; width: 100%; font-size: 14px; margin-bottom: 6px; cursor: pointer; font-weight: 600; }
+        #sticker-grid::-webkit-scrollbar { width: 4px; }
+        #sticker-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
-        #upload-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
-        .modal-content { background: #1e1f22; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        .modal-content h3 { margin: 0; font-size: 16px; color: white; }
-        .modal-content label { font-size: 12px; color: #aaa; }
-        .modal-select, .modal-input { padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; outline: none; width: 100%; box-sizing: border-box; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-cancel { padding: 10px; border-radius: 8px; background: transparent; color: white; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; flex: 1; transition: 0.2s; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.1); }
-        .btn-confirm { padding: 10px; border-radius: 8px; background: #5865F2; color: white; border: none; cursor: pointer; flex: 1; font-weight: bold; transition: 0.2s; }
-        .btn-confirm:hover { background: #4752C4; }
+        .sticker-item {
+            width: 66px; height: 66px;
+            object-fit: cover;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .sticker-item:hover { transform: scale(1.1); }
+
+        /* ── INPUT GROUP ── */
+        .input-group {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+        }
+
+        .btn-icon {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 38px; height: 38px;
+            border-radius: 12px;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.15);
+            transform: scale(1.05);
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.06);
+            color: white;
+            outline: none;
+            font-size: 13.5px;
+            transition: border 0.2s, background 0.2s;
+            min-width: 0;
+        }
+
+        input[type="text"]::placeholder { color: rgba(255,255,255,0.3); }
+
+        input[type="text"]:focus {
+            border-color: rgba(88, 101, 242, 0.6);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn-enviar {
+            padding: 0 15px;
+            height: 38px;
+            border-radius: 12px;
+            background: #5865F2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.2s, transform 0.1s;
+            flex-shrink: 0;
+        }
+
+        .btn-enviar:hover { background: #4752C4; }
+        .btn-enviar:active { transform: scale(0.96); }
     </style>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN ESTILO NETFLIX -->
     <div id="login-screen">
-        <h1 class="login-title">Quem está assistindo?</h1>
-        
-        <div class="profiles-container">
-            <!-- Perfil Kunin -->
-            <div class="profile-card" onclick="entrarNaSala('Kunin')">
-                <img class="profile-avatar" src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
-                <span class="profile-name">Kunin</span>
+        <h1 class="login-title">Nosso Espaço 🌙</h1>
+        <p class="login-subtitle">quem é você hoje?</p>
+        <div class="login-cards">
+            <div class="login-card" onclick="entrarNaSala('Kunin')">
+                <img src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
+                <span>Kunin</span>
+                <span class="login-tag">entrar →</span>
             </div>
-            
-            <!-- Perfil Shirlei -->
-            <div class="profile-card" onclick="entrarNaSala('Shirlei')">
-                <img class="profile-avatar" src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
-                <span class="profile-name">Shirlei</span>
+            <div class="login-card" onclick="entrarNaSala('Shirlei')">
+                <img src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
+                <span>Shirlei</span>
+                <span class="login-tag">entrar →</span>
             </div>
         </div>
     </div>
 
-    <!-- TELA DA SALA (Permanece igual) -->
     <div id="room-screen" class="hidden">
         <div id="video-container">
             <video id="screen-video" autoplay playsinline></video>
         </div>
 
         <div id="overlay-panel">
+
             <div class="top-controls">
+                <span id="user-badge">👤 —</span>
                 <button class="btn-top" onclick="toggleFullScreen()" title="Tela Cheia">🔲</button>
-                <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar Todo o Histórico">🗑️</button>
-                <div style="flex-grow: 1;"></div>
-                <span style="font-size: 11px; color: #ccc;">Transparência</span>
-                <input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.6" oninput="mudarTransparencia(this.value)">
+                <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar Histórico">🗑️</button>
+                <div class="transparency-wrap">
+                    <span>opacidade</span>
+                    <input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)">
+                </div>
             </div>
 
             <button class="btn-share" onclick="iniciarCompartilhamento()">📺 Compartilhar Minha Tela</button>
+
             <div id="chat-box"></div>
+
             <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
 
             <div id="sticker-picker" class="hidden">
                 <div class="sticker-header">
-                    <select id="pack-filter" class="pack-select" onchange="renderizarGaveta()">
-                        <option value="Todos">Todos os Pacotes</option>
-                    </select>
-                    <button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Add</button>
-                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" multiple onchange="prepararUpload(event)">
+                    <span>Gaveta de Figurinhas</span>
+                    <button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Adicionar</button>
+                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" onchange="salvarNovaFigurinha(event)">
                 </div>
-                
-                <div class="section-title">Recentes</div>
-                <div id="recent-stickers-grid"></div>
-
-                <div class="section-title">Sua Coleção</div>
                 <div id="sticker-grid"></div>
             </div>
 
             <div class="input-group">
                 <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emojis">😀</button>
-                <button class="btn-icon" onclick="toggleStickerPicker()" title="Gaveta de Figurinhas">🖼️</button>
-                <input type="text" id="message-input" placeholder="Mensagem..." autocomplete="off">
+                <button class="btn-icon" onclick="toggleStickerPicker()" title="Figurinhas">🖼️</button>
+                <input type="text" id="message-input" placeholder="mensagem..." autocomplete="off">
                 <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
-            </div>
-        </div>
-
-        <div id="upload-modal" class="hidden">
-            <div class="modal-content">
-                <h3 id="modal-title">Salvar Figurinha</h3>
-                <label>Escolha o destino:</label>
-                <select id="upload-pack-select" class="modal-select" onchange="toggleNewPackInput()"></select>
-                <input type="text" id="new-pack-input" class="modal-input hidden" placeholder="Nome do novo pacote..." autocomplete="off">
-                <div class="modal-buttons">
-                    <button class="btn-cancel" onclick="fecharModalUpload()">Cancelar</button>
-                    <button class="btn-confirm" onclick="confirmarUpload()">Salvar</button>
-                </div>
             </div>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
+
+    <script>
+        // Intercept entrarNaSala após o módulo ES carregar
+        window.addEventListener('load', () => {
+            const orig = window.entrarNaSala;
+            if (orig) {
+                window.entrarNaSala = function(nome) {
+                    orig(nome);
+                    document.getElementById('user-badge').textContent = '👤 ' + nome;
+                };
+            }
+        });
+    </script>
 </body>
 </html>
