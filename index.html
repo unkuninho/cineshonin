@@ -11,10 +11,25 @@
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0c10; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: white; }
         .hidden { display: none !important; }
         
-        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #1a1a1d; }
-        .login-btn { padding: 14px 28px; font-size: 16px; margin: 10px; cursor: pointer; border-radius: 50px; border: none; background-color: #5865F2; color: white; font-weight: 600; transition: transform 0.2s, background 0.2s; }
-        .login-btn:hover { background-color: #4752C4; transform: scale(1.05); }
+        /* --- ESTILO NETFLIX NA TELA DE LOGIN --- */
+        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #141414; }
         
+        .login-title { font-size: 3.5vw; font-weight: 400; color: #fff; margin-bottom: 2em; letter-spacing: 2px; }
+        @media (max-width: 800px) { .login-title { font-size: 28px; } }
+
+        .profiles-container { display: flex; gap: 4vw; justify-content: center; align-items: center; }
+        
+        .profile-card { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
+        
+        .profile-avatar { width: 12vw; min-width: 100px; max-width: 160px; height: 12vw; min-height: 100px; max-height: 160px; border-radius: 4px; border: 3px solid transparent; box-sizing: border-box; transition: border-color 0.2s, transform 0.2s; object-fit: cover; }
+        
+        .profile-name { color: #808080; margin-top: 15px; font-size: 1.3rem; transition: color 0.2s; }
+
+        /* Efeitos de Hover (Passar o mouse) */
+        .profile-card:hover .profile-avatar { border-color: white; transform: scale(1.05); }
+        .profile-card:hover .profile-name { color: white; }
+        /* --------------------------------------- */
+
         #room-screen { position: relative; width: 100vw; height: 100vh; }
         #video-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: black; }
         video { width: 100%; height: 100%; object-fit: contain; } 
@@ -99,12 +114,26 @@
 </head>
 <body>
 
+    <!-- TELA DE LOGIN ESTILO NETFLIX -->
     <div id="login-screen">
-        <h1 style="margin-bottom: 30px;">Nosso Espaço</h1>
-        <button class="login-btn" onclick="entrarNaSala('Kunin')">Entrar como Kunin</button>
-        <button class="login-btn" onclick="entrarNaSala('Shirlei')">Entrar como Shirlei</button>
+        <h1 class="login-title">Quem está assistindo?</h1>
+        
+        <div class="profiles-container">
+            <!-- Perfil Kunin -->
+            <div class="profile-card" onclick="entrarNaSala('Kunin')">
+                <img class="profile-avatar" src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
+                <span class="profile-name">Kunin</span>
+            </div>
+            
+            <!-- Perfil Shirlei -->
+            <div class="profile-card" onclick="entrarNaSala('Shirlei')">
+                <img class="profile-avatar" src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
+                <span class="profile-name">Shirlei</span>
+            </div>
+        </div>
     </div>
 
+    <!-- TELA DA SALA (Permanece igual) -->
     <div id="room-screen" class="hidden">
         <div id="video-container">
             <video id="screen-video" autoplay playsinline></video>
