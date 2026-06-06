@@ -7,7 +7,6 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
     <style>
         :root { --bg-alpha: 0.75; }
-
         *, *::before, *::after { box-sizing: border-box; }
 
         body, html {
@@ -28,68 +27,62 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background: radial-gradient(ellipse at 50% 40%, #1a1d2e 0%, #0b0c10 70%);
-            gap: 0;
+            background: radial-gradient(ellipse at 50% 35%, #1c1e30 0%, #0b0c10 70%);
         }
 
         .login-title {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             letter-spacing: -0.5px;
-            margin-bottom: 6px;
-            background: linear-gradient(135deg, #fff 60%, #8b9eff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+            color: white;
         }
 
         .login-subtitle {
-            font-size: 14px;
-            color: rgba(255,255,255,0.4);
-            margin-bottom: 40px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 48px;
         }
 
-        .login-cards {
-            display: flex;
-            gap: 20px;
-        }
+        .login-cards { display: flex; gap: 24px; }
 
         .login-card {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 14px;
-            padding: 28px 36px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 20px;
+            gap: 0;
             cursor: pointer;
-            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+            transition: transform 0.2s;
         }
 
-        .login-card:hover {
-            transform: translateY(-4px);
-            background: rgba(255,255,255,0.07);
-            border-color: rgba(88, 101, 242, 0.5);
-        }
+        .login-card:hover { transform: translateY(-6px); }
 
-        .login-card img {
-            width: 72px;
-            height: 72px;
+        .login-card-photo {
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid rgba(255,255,255,0.15);
+            border: 2.5px solid rgba(255,255,255,0.12);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            display: block;
         }
 
-        .login-card span {
+        .login-card:hover .login-card-photo {
+            border-color: rgba(88, 101, 242, 0.7);
+            box-shadow: 0 0 0 4px rgba(88, 101, 242, 0.15);
+        }
+
+        .login-card-name {
+            margin-top: 14px;
             font-size: 16px;
             font-weight: 600;
-            color: rgba(255,255,255,0.9);
+            color: rgba(255,255,255,0.85);
         }
 
-        .login-card .login-tag {
+        .login-card-hint {
+            margin-top: 4px;
             font-size: 11px;
-            color: rgba(255,255,255,0.35);
-            font-weight: 400;
+            color: rgba(255,255,255,0.3);
         }
 
         /* ── ROOM ── */
@@ -112,17 +105,17 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 24px;
-            padding: 16px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
             gap: 10px;
             z-index: 10;
             border: 1px solid rgba(255, 255, 255, 0.07);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
             transition: background 0.1s ease;
         }
 
-        /* ── TOP CONTROLS ── */
+        /* ── TOP BAR ── */
         .top-controls {
             display: flex;
             align-items: center;
@@ -131,100 +124,120 @@
             border-bottom: 1px solid rgba(255,255,255,0.07);
         }
 
+        /* User badge com presença */
         #user-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-size: 12px;
             font-weight: 600;
-            color: rgba(255,255,255,0.5);
+            color: rgba(255,255,255,0.55);
             background: rgba(255,255,255,0.06);
-            padding: 3px 10px;
+            padding: 3px 10px 3px 8px;
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.08);
             margin-right: auto;
         }
 
+        /* Presença do outro usuário */
+        #presence-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .presence-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background 0.4s;
+        }
+
+        .presence-dot.online  { background: #3ba55c; box-shadow: 0 0 0 2px rgba(59,165,92,0.2); }
+        .presence-dot.offline { background: #ed4245; box-shadow: 0 0 0 2px rgba(237,66,69,0.15); }
+
+        #presence-label { font-size: 11px; }
+
+        /* Botões do topo — SVG icons */
         .btn-top {
             background: transparent;
             border: 1px solid rgba(255,255,255,0.08);
             cursor: pointer;
-            font-size: 14px;
-            padding: 5px 8px;
+            padding: 6px;
             border-radius: 8px;
             transition: 0.2s;
-            color: white;
-            line-height: 1;
+            color: rgba(255,255,255,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px; height: 30px;
         }
 
-        .btn-top:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-        .btn-top.danger:hover { background: rgba(255, 77, 77, 0.15); border-color: rgba(255,77,77,0.3); }
+        .btn-top:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.16); color: white; }
+        .btn-top.danger:hover { background: rgba(237,66,69,0.15); border-color: rgba(237,66,69,0.3); color: #ed4245; }
 
+        .btn-top svg { display: block; }
+
+        /* Slider de transparência */
         .transparency-wrap {
             display: flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
+            gap: 5px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
             border-radius: 8px;
             padding: 4px 8px;
         }
 
-        .transparency-wrap span {
-            font-size: 10px;
-            color: rgba(255,255,255,0.4);
-            white-space: nowrap;
-        }
+        .transparency-wrap span { font-size: 10px; color: rgba(255,255,255,0.35); white-space: nowrap; }
 
         #transparency-slider {
-            width: 60px;
-            cursor: pointer;
-            -webkit-appearance: none;
-            height: 3px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            outline: none;
+            width: 56px; cursor: pointer;
+            -webkit-appearance: none; height: 3px;
+            background: rgba(255,255,255,0.18); border-radius: 2px; outline: none;
         }
 
         #transparency-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #5865F2;
-            cursor: pointer;
+            width: 11px; height: 11px; border-radius: 50%;
+            background: #5865F2; cursor: pointer;
         }
 
-        /* ── SHARE BUTTON ── */
+        /* ── SHARE BUTTON — integrado ao chat, não separado ── */
         .btn-share {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
             background: rgba(255,255,255,0.05);
-            color: rgba(255,255,255,0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 9px;
+            color: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 8px 12px;
             width: 100%;
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
             font-weight: 500;
             transition: 0.2s;
-            letter-spacing: 0.1px;
         }
 
-        .btn-share:hover {
-            background: rgba(255,255,255,0.09);
-            border-color: rgba(255,255,255,0.15);
-            color: white;
-        }
+        .btn-share:hover { background: rgba(255,255,255,0.09); color: white; border-color: rgba(255,255,255,0.14); }
+        .btn-share svg { opacity: 0.7; }
 
         /* ── CHAT BOX ── */
         #chat-box {
-            height: 280px;
+            height: 270px;
             overflow-y: auto;
-            padding-right: 4px;
+            padding-right: 3px;
             display: flex;
             flex-direction: column;
         }
 
         #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-track { background: transparent; }
-        #chat-box::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        #chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
 
         /* ── MESSAGES ── */
         .message-row {
@@ -233,15 +246,15 @@
             margin-bottom: 10px;
             align-items: flex-end;
             position: relative;
-            animation: msgIn 0.18s ease;
+            animation: msgIn 0.16s ease;
         }
 
         @keyframes msgIn {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(5px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        .message-row.own  { justify-content: flex-end; }
+        .message-row.own   { justify-content: flex-end; }
         .message-row.other { justify-content: flex-start; }
 
         .avatar {
@@ -269,7 +282,7 @@
             background: #5865F2;
             color: #fff;
             border-bottom-right-radius: 5px;
-            box-shadow: 0 2px 8px rgba(88, 101, 242, 0.35);
+            box-shadow: 0 2px 8px rgba(88,101,242,0.3);
         }
 
         .message-row.other .message-bubble {
@@ -281,39 +294,30 @@
 
         .message-bubble.is-sticker {
             background: transparent !important;
-            padding: 0;
-            box-shadow: none;
-            border: none;
+            padding: 0; box-shadow: none; border: none;
         }
 
         .sticker-img {
             max-width: 130px; max-height: 130px;
-            object-fit: contain;
-            border-radius: 8px;
-            cursor: pointer;
+            object-fit: contain; border-radius: 8px; cursor: pointer;
         }
 
         .message-author {
-            font-size: 10px;
-            color: rgba(255,255,255,0.4);
-            margin-bottom: 4px;
-            display: block;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
+            font-size: 10px; color: rgba(255,255,255,0.38);
+            margin-bottom: 4px; display: block;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
         }
 
         .message-row.own .message-author { display: none; }
 
-        /* ── ACTION BUTTONS ── */
+        /* Botões de ação (SVG) */
         .msg-actions {
             display: none;
             position: absolute;
-            top: -18px;
-            right: 12px;
+            top: -20px; right: 10px;
             background: #1e1f24;
-            border-radius: 8px;
-            padding: 2px 4px;
+            border-radius: 7px;
+            padding: 3px 5px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.6);
             z-index: 100;
             border: 1px solid rgba(255,255,255,0.08);
@@ -322,178 +326,162 @@
         .message-row:hover .msg-actions { display: flex; gap: 2px; }
 
         .btn-action {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-            transition: 0.15s;
-            padding: 4px 5px;
-            border-radius: 5px;
-            opacity: 0.7;
+            background: none; border: none; cursor: pointer;
+            transition: 0.15s; padding: 4px 5px; border-radius: 5px;
+            color: rgba(255,255,255,0.65); display: flex; align-items: center;
         }
 
-        .btn-action:hover { background: rgba(255,255,255,0.1); opacity: 1; transform: scale(1.15); }
+        .btn-action:hover { background: rgba(255,255,255,0.1); color: white; transform: scale(1.1); }
 
         /* ── PICKERS ── */
         emoji-picker {
             position: absolute;
-            bottom: 72px; right: 15px;
-            z-index: 100;
-            height: 320px;
+            bottom: 56px; right: 15px;
+            z-index: 100; height: 320px;
             --background: #1e1f24;
-            --border-color: rgba(255, 255, 255, 0.08);
+            --border-color: rgba(255,255,255,0.08);
             border-radius: 16px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.6);
         }
 
         #sticker-picker {
             position: absolute;
-            bottom: 72px; right: 15px;
+            bottom: 56px; right: 15px;
             width: 310px; height: 310px;
             background: #1e1f24;
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255,255,255,0.08);
             z-index: 100;
-            display: flex;
-            flex-direction: column;
-            padding: 12px;
-            box-sizing: border-box;
+            display: flex; flex-direction: column;
+            padding: 12px; box-sizing: border-box;
             box-shadow: 0 12px 32px rgba(0,0,0,0.6);
         }
 
         .sticker-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-weight: 600;
-            font-size: 13px;
-            color: rgba(255,255,255,0.7);
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px; font-weight: 600; font-size: 13px;
+            color: rgba(255,255,255,0.65);
         }
 
         .btn-add-sticker {
-            background: #5865F2;
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            transition: 0.2s;
+            background: #5865F2; color: white; border: none;
+            padding: 5px 12px; border-radius: 8px; cursor: pointer;
+            font-weight: 600; font-size: 12px; transition: 0.2s;
         }
 
         .btn-add-sticker:hover { background: #4752C4; }
 
         #sticker-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            overflow-y: auto;
-            align-content: flex-start;
-            flex-grow: 1;
+            display: flex; flex-wrap: wrap; gap: 8px;
+            overflow-y: auto; align-content: flex-start; flex-grow: 1;
         }
 
         #sticker-grid::-webkit-scrollbar { width: 4px; }
-        #sticker-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        #sticker-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+        /* Wrapper da figurinha com botão de excluir */
+        .sticker-wrapper {
+            position: relative;
+            width: 66px; height: 66px;
+        }
 
         .sticker-item {
             width: 66px; height: 66px;
-            object-fit: cover;
-            border-radius: 10px;
-            cursor: pointer;
+            object-fit: cover; border-radius: 10px; cursor: pointer;
             transition: transform 0.2s;
             background: rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.06);
+            display: block;
         }
 
-        .sticker-item:hover { transform: scale(1.1); }
+        .sticker-item:hover { transform: scale(1.06); }
+
+        .sticker-del-btn {
+            display: none;
+            position: absolute;
+            top: -5px; right: -5px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #ed4245;
+            border: none; cursor: pointer;
+            align-items: center; justify-content: center;
+            padding: 0; z-index: 2;
+            transition: 0.15s;
+        }
+
+        .sticker-wrapper:hover .sticker-del-btn { display: flex; }
+        .sticker-del-btn:hover { background: #c03537; transform: scale(1.1); }
 
         /* ── INPUT GROUP ── */
-        .input-group {
-            display: flex;
-            gap: 7px;
-            align-items: center;
-        }
+        .input-group { display: flex; gap: 6px; align-items: center; }
 
         .btn-icon {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.08);
-            font-size: 18px;
             cursor: pointer;
             padding: 0;
-            width: 38px; height: 38px;
-            border-radius: 12px;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 36px; height: 36px;
+            border-radius: 10px; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
+            color: rgba(255,255,255,0.5);
         }
 
         .btn-icon:hover {
-            background: rgba(255,255,255,0.12);
-            border-color: rgba(255,255,255,0.15);
-            transform: scale(1.05);
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.85);
         }
 
         input[type="text"] {
-            flex-grow: 1;
-            padding: 10px 15px;
-            border-radius: 14px;
+            flex-grow: 1; padding: 9px 14px;
+            border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.06);
-            color: white;
-            outline: none;
-            font-size: 13.5px;
-            transition: border 0.2s, background 0.2s;
-            min-width: 0;
+            color: white; outline: none; font-size: 13.5px;
+            transition: border 0.2s, background 0.2s; min-width: 0;
         }
 
-        input[type="text"]::placeholder { color: rgba(255,255,255,0.3); }
+        input[type="text"]::placeholder { color: rgba(255,255,255,0.28); }
 
         input[type="text"]:focus {
-            border-color: rgba(88, 101, 242, 0.6);
+            border-color: rgba(88,101,242,0.55);
             background: rgba(255,255,255,0.08);
         }
 
         .btn-enviar {
-            padding: 0 15px;
-            height: 38px;
-            border-radius: 12px;
-            background: #5865F2;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            transition: background 0.2s, transform 0.1s;
-            flex-shrink: 0;
+            padding: 0 14px; height: 36px;
+            border-radius: 10px; background: #5865F2;
+            color: white; border: none; cursor: pointer;
+            font-weight: 600; font-size: 13px;
+            transition: background 0.2s, transform 0.1s; flex-shrink: 0;
         }
 
-        .btn-enviar:hover { background: #4752C4; }
+        .btn-enviar:hover  { background: #4752C4; }
         .btn-enviar:active { transform: scale(0.96); }
     </style>
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="login-screen">
-        <h1 class="login-title">Nosso Espaço 🌙</h1>
+        <h1 class="login-title">Nosso Espaço</h1>
         <p class="login-subtitle">quem é você hoje?</p>
         <div class="login-cards">
             <div class="login-card" onclick="entrarNaSala('Kunin')">
-                <img src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
-                <span>Kunin</span>
-                <span class="login-tag">entrar →</span>
+                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
+                <span class="login-card-name">Kunin</span>
+                <span class="login-card-hint">entrar</span>
             </div>
             <div class="login-card" onclick="entrarNaSala('Shirlei')">
-                <img src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
-                <span>Shirlei</span>
-                <span class="login-tag">entrar →</span>
+                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
+                <span class="login-card-name">Shirlei</span>
+                <span class="login-card-hint">entrar</span>
             </div>
         </div>
     </div>
 
+    <!-- ROOM -->
     <div id="room-screen" class="hidden">
         <div id="video-container">
             <video id="screen-video" autoplay playsinline></video>
@@ -501,18 +489,46 @@
 
         <div id="overlay-panel">
 
+            <!-- TOP BAR -->
             <div class="top-controls">
-                <span id="user-badge">👤 —</span>
-                <button class="btn-top" onclick="toggleFullScreen()" title="Tela Cheia">🔲</button>
-                <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar Histórico">🗑️</button>
-                <div class="transparency-wrap">
-                    <span>opacidade</span>
+                <!-- Badge do usuário logado -->
+                <span id="user-badge">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="3.5" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M1 9c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    <span id="user-badge-name">—</span>
+                </span>
+
+                <!-- Presença do outro -->
+                <div id="presence-badge">
+                    <span class="presence-dot offline" id="presence-dot"></span>
+                    <span id="presence-label">—</span>
+                </div>
+
+                <div style="flex:1"></div>
+
+                <!-- Tela cheia -->
+                <button class="btn-top" onclick="toggleFullScreen()" title="Tela cheia">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
+                </button>
+
+                <!-- Apagar histórico -->
+                <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar histórico">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h10M5 4V2.5h4V4M4.5 4v7h5V4"/><line x1="6" y1="6.5" x2="6" y2="9.5"/><line x1="8" y1="6.5" x2="8" y2="9.5"/></svg>
+                </button>
+
+                <!-- Opacidade -->
+                <div class="transparency-wrap" title="Transparência do painel">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M5 1v8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M1 5a4 4 0 014-4v8a4 4 0 01-4-4z" fill="rgba(255,255,255,0.35)"/></svg>
                     <input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)">
                 </div>
             </div>
 
-            <button class="btn-share" onclick="iniciarCompartilhamento()">📺 Compartilhar Minha Tela</button>
+            <!-- SHARE — integrado, menor, sem destaque excessivo -->
+            <button class="btn-share" onclick="iniciarCompartilhamento()">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
+                Compartilhar tela
+            </button>
 
+            <!-- CHAT -->
             <div id="chat-box"></div>
 
             <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
@@ -521,14 +537,21 @@
                 <div class="sticker-header">
                     <span>Gaveta de Figurinhas</span>
                     <button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Adicionar</button>
-                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" onchange="salvarNovaFigurinha(event)">
+                    <input type="file" id="sticker-upload" accept="image/png,image/jpeg,image/gif,image/webp" class="hidden" onchange="salvarNovaFigurinha(event)">
                 </div>
                 <div id="sticker-grid"></div>
             </div>
 
+            <!-- INPUT -->
             <div class="input-group">
-                <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emojis">😀</button>
-                <button class="btn-icon" onclick="toggleStickerPicker()" title="Figurinhas">🖼️</button>
+                <!-- Emoji -->
+                <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emojis">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="9" cy="9" r="7.5"/><circle cx="6.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><path d="M6 11.5c.8 1.2 5.2 1.2 6 0"/></svg>
+                </button>
+                <!-- Figurinhas -->
+                <button class="btn-icon" onclick="toggleStickerPicker()" title="Figurinhas">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="15" height="15" rx="3"/><path d="M9 1.5v15M1.5 9h15"/></svg>
+                </button>
                 <input type="text" id="message-input" placeholder="mensagem..." autocomplete="off">
                 <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
             </div>
@@ -536,18 +559,5 @@
     </div>
 
     <script type="module" src="app.js"></script>
-
-    <script>
-        // Intercept entrarNaSala após o módulo ES carregar
-        window.addEventListener('load', () => {
-            const orig = window.entrarNaSala;
-            if (orig) {
-                window.entrarNaSala = function(nome) {
-                    orig(nome);
-                    document.getElementById('user-badge').textContent = '👤 ' + nome;
-                };
-            }
-        });
-    </script>
 </body>
 </html>

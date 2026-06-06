@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-// Adicionados: deleteDoc, updateDoc, doc, getDocs
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, updateDoc, doc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, updateDoc, doc, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4ng6qnK6dZ4U2WKcxu5bEaBJRhVnw0YM",
@@ -20,23 +19,60 @@ const avatares = {
     "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
 };
 
+/* --- PRESENÇA --- */
+
+async function marcarPresenca(nome, online) {
+    await setDoc(doc(db, "presenca", nome), {
+        online: online,
+        ultimaVez: serverTimestamp()
+    });
+}
+
+function ouvirPresenca() {
+    const outrousuario = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
+    onSnapshot(doc(db, "presenca", outrousuario), (snap) => {
+        const dados = snap.data();
+        const dot = document.getElementById("presence-dot");
+        const label = document.getElementById("presence-label");
+        if (!dot || !label) return;
+        if (dados && dados.online) {
+            dot.className = "presence-dot online";
+            label.textContent = outrousuario + " online";
+        } else {
+            dot.className = "presence-dot offline";
+            label.textContent = outrousuario + " offline";
+        }
+    });
+}
+
 window.entrarNaSala = function(nome) {
     usuarioAtual = nome;
     document.getElementById("login-screen").classList.add("hidden");
     document.getElementById("room-screen").classList.remove("hidden");
-    
+    document.getElementById("user-badge-name").textContent = nome;
+
+    marcarPresenca(nome, true);
+
+    // Marca offline ao fechar aba
+    window.addEventListener("beforeunload", () => marcarPresenca(nome, false));
+    // Visibilidade: online quando aba ativa, offline quando minimizada/em background
+    document.addEventListener("visibilitychange", () => {
+        marcarPresenca(nome, !document.hidden);
+    });
+
+    ouvirPresenca();
     carregarMensagens();
-    carregarGavetaFigurinhas(); 
-    
+    carregarGavetaFigurinhas();
+
     document.getElementById("message-input").addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
             enviarMensagem();
-            esconderPainéis();
+            esconderPaineis();
         }
     });
 };
 
-/* --- NOVAS FUNÇÕES (TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO) --- */
+/* --- TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO --- */
 
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
@@ -49,17 +85,14 @@ window.toggleFullScreen = function() {
 };
 
 window.mudarTransparencia = function(valor) {
-    // Altera a variável CSS que criamos, atualizando a opacidade instantaneamente
     document.documentElement.style.setProperty('--bg-alpha', valor);
 };
 
 window.apagarHistorico = async function() {
-    // Confirmação dupla para não apagar sem querer
-    if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat para você e para a Shirlei. Tem certeza?")) {
+    if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat. Tem certeza?")) {
         try {
             const q = query(collection(db, "mensagens"));
             const snapshot = await getDocs(q);
-            // Passa por todas as mensagens e deleta uma por uma
             snapshot.forEach(async (documento) => {
                 await deleteDoc(doc(db, "mensagens", documento.id));
             });
@@ -78,25 +111,27 @@ window.excluirMensagem = async function(idMsg) {
 };
 
 window.editarMensagem = async function(idMsg) {
-    // Pega o texto atual direto do HTML para você não precisar digitar tudo de novo
     const textoAtual = document.getElementById(`texto-${idMsg}`).innerText;
-    
-    // Abre uma caixinha nativa do navegador para digitar o novo texto
     const novoTexto = prompt("Editar mensagem:", textoAtual);
-    
-    // Se digitou algo diferente de vazio e diferente do antigo, salva no banco
     if (novoTexto !== null && novoTexto.trim() !== "" && novoTexto !== textoAtual) {
         await updateDoc(doc(db, "mensagens", idMsg), {
             texto: novoTexto,
-            editado: true // Salva a marcação de edição
+            editado: true
         });
     }
 };
 
+/* --- EXCLUIR FIGURINHA DA GAVETA --- */
 
-/* --- CONTROLE DE PAINÉIS, CHAT E FIGURINHAS (Mantidos) --- */
+window.excluirFigurinhaDaGaveta = async function(idFig) {
+    if(confirm("Remover esta figurinha da gaveta?")) {
+        await deleteDoc(doc(db, "gaveta_figurinhas", idFig));
+    }
+};
 
-function esconderPainéis() {
+/* --- CONTROLE DE PAINÉIS --- */
+
+function esconderPaineis() {
     document.getElementById("emoji-picker").classList.add("hidden");
     document.getElementById("sticker-picker").classList.add("hidden");
 }
@@ -114,40 +149,61 @@ window.toggleStickerPicker = function() {
 document.getElementById("emoji-picker").addEventListener('emoji-click', event => {
     const input = document.getElementById("message-input");
     input.value += event.detail.unicode;
-    input.focus(); 
+    input.focus();
 });
+
+/* --- MENSAGENS --- */
 
 window.enviarMensagem = async function() {
     const input = document.getElementById("message-input");
     const texto = input.value;
-    if(texto.trim() === "") return; 
+    if(texto.trim() === "") return;
     try {
         await addDoc(collection(db, "mensagens"), {
             tipo: "texto",
             texto: texto,
             autor: usuarioAtual,
-            hora: serverTimestamp() 
+            hora: serverTimestamp()
         });
-        input.value = ""; 
-        esconderPainéis();
+        input.value = "";
+        esconderPaineis();
     } catch (e) {
         console.error("Erro ao enviar mensagem: ", e);
     }
 };
 
+/* --- GAVETA DE FIGURINHAS (com exclusão e fechar ao enviar) --- */
+
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
     onSnapshot(q, (snapshot) => {
         const grid = document.getElementById("sticker-grid");
-        grid.innerHTML = ""; 
-        snapshot.forEach((doc) => {
-            const fig = doc.data();
+        grid.innerHTML = "";
+        snapshot.forEach((documento) => {
+            const fig = documento.data();
+            const idFig = documento.id;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "sticker-wrapper";
+
             const imgElement = document.createElement("img");
             imgElement.src = fig.url;
             imgElement.className = "sticker-item";
             imgElement.title = "Clique para enviar";
             imgElement.onclick = function() { enviarFigurinhaSalva(fig.url); };
-            grid.appendChild(imgElement);
+
+            const btnDel = document.createElement("button");
+            btnDel.className = "sticker-del-btn";
+            btnDel.title = "Remover";
+            btnDel.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+            btnDel.onclick = function(e) {
+                e.stopPropagation();
+                excluirFigurinhaDaGaveta(idFig);
+            };
+
+            wrapper.appendChild(imgElement);
+            wrapper.appendChild(btnDel);
+            grid.appendChild(wrapper);
         });
     });
 }
@@ -155,25 +211,27 @@ function carregarGavetaFigurinhas() {
 window.salvarNovaFigurinha = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
-    event.target.value = ''; 
-    const maxTamanho = 800 * 1024; 
+    event.target.value = '';
+    const maxTamanho = 800 * 1024;
     if (file.size > maxTamanho) {
         alert("Imagem muito grande! Escolha uma de até 800KB.");
         return;
     }
     const grid = document.getElementById("sticker-grid");
     const loadingId = "loading-" + Date.now();
-    grid.innerHTML += `<div id="${loadingId}" style="color: gray; font-size: 12px; width: 100%;">Convertendo...</div>`;
-    
+    grid.innerHTML += `<div id="${loadingId}" style="color:rgba(255,255,255,0.4);font-size:12px;width:100%;padding:8px;">Convertendo...</div>`;
+
     const reader = new FileReader();
     reader.onloadend = async function() {
         const base64String = reader.result;
         try {
             await addDoc(collection(db, "gaveta_figurinhas"), { url: base64String, hora: serverTimestamp() });
             enviarFigurinhaSalva(base64String);
-            document.getElementById(loadingId).remove();
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
         } catch (erro) {
-            document.getElementById(loadingId).innerText = "Erro ao salvar!";
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.innerText = "Erro ao salvar!";
         }
     };
     reader.readAsDataURL(file);
@@ -181,60 +239,70 @@ window.salvarNovaFigurinha = async function(event) {
 
 window.enviarFigurinhaSalva = async function(base64String) {
     try {
-        await addDoc(collection(db, "mensagens"), { tipo: "figurinha", url: base64String, autor: usuarioAtual, hora: serverTimestamp() });
-        esconderPainéis();
+        await addDoc(collection(db, "mensagens"), {
+            tipo: "figurinha",
+            url: base64String,
+            autor: usuarioAtual,
+            hora: serverTimestamp()
+        });
+        // Fecha o picker ao enviar figurinha
+        esconderPaineis();
     } catch (erro) {
         console.error("Erro ao enviar figurinha: ", erro);
     }
 };
 
-/* --- RENDERIZAÇÃO DAS MENSAGENS COM BOTÕES --- */
+/* --- RENDERIZAÇÃO DAS MENSAGENS --- */
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
     onSnapshot(q, (snapshot) => {
         const chatBox = document.getElementById("chat-box");
-        chatBox.innerHTML = ""; 
-        
+        chatBox.innerHTML = "";
+
         snapshot.forEach((documento) => {
             const mensagem = documento.data();
-            const idMsg = documento.id; // Precisamos do ID para editar/excluir
+            const idMsg = documento.id;
             const msgElement = document.createElement("div");
-            
+
             const isOwn = mensagem.autor === usuarioAtual;
             msgElement.className = `message-row ${isOwn ? 'own' : 'other'}`;
-            
+
             const fotoUrl = avatares[mensagem.autor] || "";
             const avatarHTML = `<img src="${fotoUrl}" class="avatar">`;
-            
+
             let conteudoHTML = "";
             let classeExtra = "";
             let botoesAcaoHTML = "";
 
-            // Cria os botões apenas para as SUAS mensagens
             if (isOwn) {
                 if (mensagem.tipo === "figurinha") {
                     botoesAcaoHTML = `
                         <div class="msg-actions">
-                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">🗑️</button>
+                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
                         </div>`;
                 } else {
                     botoesAcaoHTML = `
                         <div class="msg-actions">
-                            <button class="btn-action" onclick="editarMensagem('${idMsg}')" title="Editar">✏️</button>
-                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">🗑️</button>
+                            <button class="btn-action" onclick="editarMensagem('${idMsg}')" title="Editar">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
                         </div>`;
                 }
             }
 
             if (mensagem.tipo === "figurinha") {
                 conteudoHTML = `<img src="${mensagem.url}" class="sticker-img">`;
-                classeExtra = "is-sticker"; 
+                classeExtra = "is-sticker";
             } else {
-                // Coloca o texto dentro de um 'span' com ID para podermos puxar o texto na hora de editar
-                conteudoHTML = `<span id="texto-${idMsg}">${mensagem.texto || ""}</span>`; 
+                conteudoHTML = `<span id="texto-${idMsg}">${mensagem.texto || ""}</span>`;
                 if (mensagem.editado) {
-                    conteudoHTML += ` <span style="font-size: 10px; color: rgba(255,255,255,0.6); font-style: italic;">(editado)</span>`;
+                    conteudoHTML += ` <span style="font-size:10px;color:rgba(255,255,255,0.45);font-style:italic;">(editado)</span>`;
                 }
             }
 
@@ -245,13 +313,8 @@ function carregarMensagens() {
                     ${conteudoHTML}
                 </div>
             `;
-            
-            if (isOwn) {
-                msgElement.innerHTML = bubbleHTML + avatarHTML;
-            } else {
-                msgElement.innerHTML = avatarHTML + bubbleHTML;
-            }
-            
+
+            msgElement.innerHTML = isOwn ? bubbleHTML + avatarHTML : avatarHTML + bubbleHTML;
             chatBox.appendChild(msgElement);
         });
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -261,8 +324,7 @@ function carregarMensagens() {
 window.iniciarCompartilhamento = async function() {
     try {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
-        const videoElement = document.getElementById("screen-video");
-        videoElement.srcObject = stream;
+        document.getElementById("screen-video").srcObject = stream;
     } catch (erro) {
         console.error("Erro ao compartilhar a tela: ", erro);
     }
