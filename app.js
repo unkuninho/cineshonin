@@ -53,7 +53,13 @@ window.iniciarCompartilhamento = async function() {
         return;
     }
 
-    // Mostra preview local (pequeno, no canto)
+    // Mostra o stream local no vídeo principal (para o Kunin ver o que está transmitindo)
+    const screenVideo = document.getElementById("screen-video");
+    screenVideo.srcObject = localStream;
+    screenVideo.classList.remove("hidden");
+    document.getElementById("sem-transmissao").classList.add("hidden");
+
+    // Mostra preview local pequeno no canto (opcional, pode remover se preferir)
     const videoLocal = document.getElementById("local-preview");
     videoLocal.srcObject = localStream;
     videoLocal.classList.remove("hidden");
@@ -123,6 +129,11 @@ function pararTransmissao() {
     const videoLocal = document.getElementById("local-preview");
     videoLocal.srcObject = null;
     videoLocal.classList.add("hidden");
+
+    const screenVideo = document.getElementById("screen-video");
+    screenVideo.srcObject = null;
+    screenVideo.classList.add("hidden");
+    document.getElementById("sem-transmissao").classList.remove("hidden");
 
     const btnShare = document.getElementById("btn-share");
     btnShare.classList.remove("transmitindo");
