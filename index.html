@@ -53,4 +53,93 @@
         .msg-actions { display: none; position: absolute; top: -15px; right: 15px; background: #1e1f22; border-radius: 8px; padding: 2px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 100; border: 1px solid rgba(255,255,255,0.1); }
         .message-row:hover .msg-actions { display: flex; gap: 2px; }
         .btn-action { background: none; border: none; cursor: pointer; font-size: 12px; transition: 0.2s; padding: 4px; border-radius: 4px; }
-        .btn-action:hover
+        .btn-action:hover { background: rgba(255,255,255,0.1); transform: scale(1.1); }
+
+        emoji-picker { position: absolute; bottom: 75px; right: 15px; z-index: 100; height: 320px; --background: #2b2d31; --border-color: rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        
+        /* Nova Gaveta de Figurinhas */
+        #sticker-picker { position: absolute; bottom: 75px; right: 15px; width: 340px; height: 400px; background: #2b2d31; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: bold; font-size: 14px; gap: 8px; }
+        .pack-select { flex-grow: 1; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); outline: none; }
+        .btn-add-sticker { background: #5865F2; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .btn-add-sticker:hover { background: #4752C4; }
+        
+        .section-title { font-size: 11px; color: #aaa; margin: 4px 0; text-transform: uppercase; font-weight: bold; }
+        #recent-stickers-grid { display: flex; gap: 8px; margin-bottom: 8px; min-height: 70px; overflow-x: auto; padding-bottom: 4px; }
+        #recent-stickers-grid::-webkit-scrollbar { height: 4px; }
+        #recent-stickers-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+
+        #sticker-grid { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; align-content: flex-start; flex-grow: 1; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
+        
+        /* O wrapper permite colocar o botão de apagar por cima da figurinha na gaveta */
+        .sticker-wrapper { position: relative; display: inline-block; width: 70px; height: 70px; }
+        .sticker-item { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; background: rgba(0,0,0,0.3); }
+        .sticker-item:hover { transform: scale(1.05); }
+        
+        /* Botão vermelho de excluir figurinha da gaveta */
+        .btn-delete-sticker { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .sticker-wrapper:hover .btn-delete-sticker { display: flex; }
+
+        .input-group { display: flex; gap: 8px; align-items: center; }
+        .btn-icon { background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 0 4px; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { transform: scale(1.1); }
+        input[type="text"] { flex-grow: 1; padding: 12px 16px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: white; outline: none; transition: border 0.2s; width: 100%; }
+        input[type="text"]:focus { border: 1px solid #5865F2; }
+        .btn-enviar { padding: 0 16px; height: 42px; border-radius: 24px; background-color: #5865F2; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-share { background-color: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 10px; width: 100%; font-size: 14px; margin-bottom: 6px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h1 style="margin-bottom: 30px;">Nosso Espaço</h1>
+        <button class="login-btn" onclick="entrarNaSala('Kunin')">Entrar como Kunin</button>
+        <button class="login-btn" onclick="entrarNaSala('Shirlei')">Entrar como Shirlei</button>
+    </div>
+
+    <div id="room-screen" class="hidden">
+        <div id="video-container">
+            <video id="screen-video" autoplay playsinline></video>
+        </div>
+
+        <div id="overlay-panel">
+            <div class="top-controls">
+                <button class="btn-top" onclick="toggleFullScreen()" title="Tela Cheia">🔲</button>
+                <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar Todo o Histórico">🗑️</button>
+                <div style="flex-grow: 1;"></div>
+                <span style="font-size: 11px; color: #ccc;">Transparência</span>
+                <input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.6" oninput="mudarTransparencia(this.value)">
+            </div>
+
+            <button class="btn-share" onclick="iniciarCompartilhamento()">📺 Compartilhar Minha Tela</button>
+            <div id="chat-box"></div>
+            <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
+
+            <div id="sticker-picker" class="hidden">
+                <div class="sticker-header">
+                    <select id="pack-filter" class="pack-select" onchange="renderizarGaveta()">
+                        <option value="Todos">Todos os Pacotes</option>
+                    </select>
+                    <button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Add</button>
+                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" onchange="salvarNovaFigurinha(event)">
+                </div>
+                
+                <div class="section-title">Recentes</div>
+                <div id="recent-stickers-grid"></div>
+
+                <div class="section-title">Sua Coleção</div>
+                <div id="sticker-grid"></div>
+            </div>
+
+            <div class="input-group">
+                <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emojis">😀</button>
+                <button class="btn-icon" onclick="toggleStickerPicker()" title="Gaveta de Figurinhas">🖼️</button>
+                <input type="text" id="message-input" placeholder="Mensagem..." autocomplete="off">
+                <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
