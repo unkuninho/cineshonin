@@ -57,7 +57,6 @@
 
         emoji-picker { position: absolute; bottom: 75px; right: 15px; z-index: 100; height: 320px; --background: #2b2d31; --border-color: rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
         
-        /* Nova Gaveta de Figurinhas */
         #sticker-picker { position: absolute; bottom: 75px; right: 15px; width: 340px; height: 400px; background: #2b2d31; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
         .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: bold; font-size: 14px; gap: 8px; }
         .pack-select { flex-grow: 1; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); outline: none; }
@@ -65,18 +64,17 @@
         .btn-add-sticker:hover { background: #4752C4; }
         
         .section-title { font-size: 11px; color: #aaa; margin: 4px 0; text-transform: uppercase; font-weight: bold; }
-        #recent-stickers-grid { display: flex; gap: 8px; margin-bottom: 8px; min-height: 70px; overflow-x: auto; padding-bottom: 4px; }
+        
+        #recent-stickers-grid { display: flex; gap: 8px; margin-bottom: 8px; padding-bottom: 4px; overflow-x: auto; align-items: center; }
         #recent-stickers-grid::-webkit-scrollbar { height: 4px; }
         #recent-stickers-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        /* Correção: Tamanho fixo para que o flexbox não estique as recentes */
+        #recent-stickers-grid .sticker-item { width: 50px; height: 50px; min-width: 50px; flex-shrink: 0; object-fit: cover; }
 
         #sticker-grid { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; align-content: flex-start; flex-grow: 1; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
-        
-        /* O wrapper permite colocar o botão de apagar por cima da figurinha na gaveta */
         .sticker-wrapper { position: relative; display: inline-block; width: 70px; height: 70px; }
         .sticker-item { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; background: rgba(0,0,0,0.3); }
         .sticker-item:hover { transform: scale(1.05); }
-        
-        /* Botão vermelho de excluir figurinha da gaveta */
         .btn-delete-sticker { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
         .sticker-wrapper:hover .btn-delete-sticker { display: flex; }
 
@@ -87,6 +85,18 @@
         input[type="text"]:focus { border: 1px solid #5865F2; }
         .btn-enviar { padding: 0 16px; height: 42px; border-radius: 24px; background-color: #5865F2; color: white; border: none; cursor: pointer; font-weight: bold; }
         .btn-share { background-color: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 10px; width: 100%; font-size: 14px; margin-bottom: 6px; cursor: pointer; font-weight: 600; }
+
+        /* Estilos do Modal de Upload */
+        #upload-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+        .modal-content { background: #1e1f22; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .modal-content h3 { margin: 0; font-size: 16px; color: white; }
+        .modal-content label { font-size: 12px; color: #aaa; }
+        .modal-select, .modal-input { padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; outline: none; width: 100%; box-sizing: border-box; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-cancel { padding: 10px; border-radius: 8px; background: transparent; color: white; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; flex: 1; transition: 0.2s; }
+        .btn-cancel:hover { background: rgba(255,255,255,0.1); }
+        .btn-confirm { padding: 10px; border-radius: 8px; background: #5865F2; color: white; border: none; cursor: pointer; flex: 1; font-weight: bold; transition: 0.2s; }
+        .btn-confirm:hover { background: #4752C4; }
     </style>
 </head>
 <body>
@@ -121,7 +131,7 @@
                         <option value="Todos">Todos os Pacotes</option>
                     </select>
                     <button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Add</button>
-                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" onchange="salvarNovaFigurinha(event)">
+                    <input type="file" id="sticker-upload" accept="image/png, image/jpeg, image/gif, image/webp" class="hidden" onchange="prepararUpload(event)">
                 </div>
                 
                 <div class="section-title">Recentes</div>
@@ -136,6 +146,19 @@
                 <button class="btn-icon" onclick="toggleStickerPicker()" title="Gaveta de Figurinhas">🖼️</button>
                 <input type="text" id="message-input" placeholder="Mensagem..." autocomplete="off">
                 <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
+            </div>
+        </div>
+
+        <div id="upload-modal" class="hidden">
+            <div class="modal-content">
+                <h3>Salvar Figurinha</h3>
+                <label>Escolha o destino:</label>
+                <select id="upload-pack-select" class="modal-select" onchange="toggleNewPackInput()"></select>
+                <input type="text" id="new-pack-input" class="modal-input hidden" placeholder="Nome do novo pacote..." autocomplete="off">
+                <div class="modal-buttons">
+                    <button class="btn-cancel" onclick="fecharModalUpload()">Cancelar</button>
+                    <button class="btn-confirm" onclick="confirmarUpload()">Salvar</button>
+                </div>
             </div>
         </div>
     </div>
