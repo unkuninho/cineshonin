@@ -19,7 +19,186 @@ const avatares = {
     "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
 };
 
-/* --- PRESENÇA --- */
+/* ─────────────────────────────────────────
+   WebRTC
+───────────────────────────────────────── */
+
+const rtcConfig = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
+
+const SALA_ID = "sala-principal";
+let peerConnection = null;
+let localStream = null;
+
+// Referências no Firestore para a chamada
+function refChamada()          { return doc(db, "chamada", SALA_ID); }
+function refOfferCandidates()  { return collection(db, "chamada", SALA_ID, "offerCandidates"); }
+function refAnswerCandidates() { return collection(db, "chamada", SALA_ID, "answerCandidates"); }
+
+/* Kunin: inicia transmissão */
+window.iniciarCompartilhamento = async function() {
+    const btnShare = document.getElementById("btn-share");
+
+    // Se já está transmitindo, para a transmissão
+    if (localStream) {
+        pararTransmissao();
+        return;
+    }
+
+    try {
+        localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
+    } catch (erro) {
+        console.error("Erro ao capturar tela:", erro);
+        return;
+    }
+
+    // Mostra preview local (pequeno, no canto)
+    const videoLocal = document.getElementById("local-preview");
+    videoLocal.srcObject = localStream;
+    videoLocal.classList.remove("hidden");
+
+    // Atualiza botão
+    btnShare.classList.add("transmitindo");
+    btnShare.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
+        Parar transmissão`;
+
+    peerConnection = new RTCPeerConnection(rtcConfig);
+
+    // Adiciona as trilhas de vídeo/áudio na conexão
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    // Quando o browser descobrir um ICE candidate, salva no Firestore
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            addDoc(refOfferCandidates(), event.candidate.toJSON());
+        }
+    };
+
+    // Para a transmissão se o usuário fechar o compartilhamento pelo próprio browser
+    localStream.getVideoTracks()[0].onended = () => pararTransmissao();
+
+    // Cria a offer
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    // Salva a offer no Firestore (sobrescreve qualquer anterior)
+    await setDoc(refChamada(), {
+        offer: { type: offer.type, sdp: offer.sdp },
+        answer: null
+    });
+
+    // Fica ouvindo a answer que a Shirlei vai criar
+    onSnapshot(refChamada(), async (snap) => {
+        const dados = snap.data();
+        if (!peerConnection) return;
+        if (dados?.answer && !peerConnection.currentRemoteDescription) {
+            const answerDesc = new RTCSessionDescription(dados.answer);
+            await peerConnection.setRemoteDescription(answerDesc);
+        }
+    });
+
+    // Fica ouvindo os ICE candidates da Shirlei
+    onSnapshot(refAnswerCandidates(), (snap) => {
+        snap.docChanges().forEach(async (change) => {
+            if (change.type === "added" && peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+            }
+        });
+    });
+};
+
+/* Para a transmissão (Kunin) */
+function pararTransmissao() {
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+    }
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    const videoLocal = document.getElementById("local-preview");
+    videoLocal.srcObject = null;
+    videoLocal.classList.add("hidden");
+
+    const btnShare = document.getElementById("btn-share");
+    btnShare.classList.remove("transmitindo");
+    btnShare.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
+        Compartilhar tela`;
+
+    // Limpa a chamada no Firestore
+    setDoc(refChamada(), { offer: null, answer: null });
+}
+
+/* Shirlei: entra automaticamente se houver uma offer ativa */
+async function entrarComoEspectadora() {
+    // Fica ouvindo o documento de chamada
+    onSnapshot(refChamada(), async (snap) => {
+        const dados = snap.data();
+
+        // Sem offer ou já tem answer (já conectada): ignora
+        if (!dados?.offer) {
+            // Se havia conexão e a offer sumiu, limpa o vídeo
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+                document.getElementById("screen-video").srcObject = null;
+                document.getElementById("screen-video").classList.add("hidden");
+                document.getElementById("sem-transmissao").classList.remove("hidden");
+            }
+            return;
+        }
+
+        // Já está conectada: não refaz
+        if (peerConnection) return;
+
+        peerConnection = new RTCPeerConnection(rtcConfig);
+
+        // Quando receber o stream remoto, coloca no <video>
+        peerConnection.ontrack = (event) => {
+            const video = document.getElementById("screen-video");
+            video.srcObject = event.streams[0];
+            video.classList.remove("hidden");
+            document.getElementById("sem-transmissao").classList.add("hidden");
+        };
+
+        // Quando descobrir um ICE candidate, salva como answerCandidate
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                addDoc(refAnswerCandidates(), event.candidate.toJSON());
+            }
+        };
+
+        // Define a offer como descrição remota
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.offer));
+
+        // Cria a answer
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        // Salva a answer no Firestore
+        await updateDoc(refChamada(), {
+            answer: { type: answer.type, sdp: answer.sdp }
+        });
+
+        // Fica ouvindo os ICE candidates do Kunin
+        onSnapshot(refOfferCandidates(), (snapCand) => {
+            snapCand.docChanges().forEach(async (change) => {
+                if (change.type === "added" && peerConnection) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                }
+            });
+        });
+    });
+}
+
+/* ─────────────────────────────────────────
+   PRESENÇA
+───────────────────────────────────────── */
 
 async function marcarPresenca(nome, online) {
     await setDoc(doc(db, "presenca", nome), {
@@ -45,17 +224,32 @@ function ouvirPresenca() {
     });
 }
 
+/* ─────────────────────────────────────────
+   ENTRADA NA SALA
+───────────────────────────────────────── */
+
 window.entrarNaSala = function(nome) {
     usuarioAtual = nome;
     document.getElementById("login-screen").classList.add("hidden");
     document.getElementById("room-screen").classList.remove("hidden");
     document.getElementById("user-badge-name").textContent = nome;
 
+    // Mostra botão de compartilhar só para o Kunin
+    const btnShare = document.getElementById("btn-share");
+    if (nome === "Kunin") {
+        btnShare.classList.remove("hidden");
+    } else {
+        btnShare.classList.add("hidden");
+        entrarComoEspectadora();
+    }
+
     marcarPresenca(nome, true);
 
-    // Marca offline ao fechar aba
-    window.addEventListener("beforeunload", () => marcarPresenca(nome, false));
-    // Visibilidade: online quando aba ativa, offline quando minimizada/em background
+    window.addEventListener("beforeunload", () => {
+        marcarPresenca(nome, false);
+        if (nome === "Kunin") pararTransmissao();
+    });
+
     document.addEventListener("visibilitychange", () => {
         marcarPresenca(nome, !document.hidden);
     });
@@ -72,7 +266,9 @@ window.entrarNaSala = function(nome) {
     });
 };
 
-/* --- TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO --- */
+/* ─────────────────────────────────────────
+   TELA CHEIA E TRANSPARÊNCIA
+───────────────────────────────────────── */
 
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
@@ -102,7 +298,9 @@ window.apagarHistorico = async function() {
     }
 };
 
-/* --- EDIÇÃO E EXCLUSÃO INDIVIDUAL DE MENSAGENS --- */
+/* ─────────────────────────────────────────
+   EDIÇÃO E EXCLUSÃO DE MENSAGENS
+───────────────────────────────────────── */
 
 window.excluirMensagem = async function(idMsg) {
     if(confirm("Deseja apagar esta mensagem?")) {
@@ -121,15 +319,15 @@ window.editarMensagem = async function(idMsg) {
     }
 };
 
-/* --- EXCLUIR FIGURINHA DA GAVETA --- */
+/* ─────────────────────────────────────────
+   FIGURINHAS
+───────────────────────────────────────── */
 
 window.excluirFigurinhaDaGaveta = async function(idFig) {
     if(confirm("Remover esta figurinha da gaveta?")) {
         await deleteDoc(doc(db, "gaveta_figurinhas", idFig));
     }
 };
-
-/* --- CONTROLE DE PAINÉIS --- */
 
 function esconderPaineis() {
     document.getElementById("emoji-picker").classList.add("hidden");
@@ -152,7 +350,9 @@ document.getElementById("emoji-picker").addEventListener('emoji-click', event =>
     input.focus();
 });
 
-/* --- MENSAGENS --- */
+/* ─────────────────────────────────────────
+   MENSAGENS
+───────────────────────────────────────── */
 
 window.enviarMensagem = async function() {
     const input = document.getElementById("message-input");
@@ -171,8 +371,6 @@ window.enviarMensagem = async function() {
         console.error("Erro ao enviar mensagem: ", e);
     }
 };
-
-/* --- GAVETA DE FIGURINHAS (com exclusão e fechar ao enviar) --- */
 
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
@@ -245,14 +443,15 @@ window.enviarFigurinhaSalva = async function(base64String) {
             autor: usuarioAtual,
             hora: serverTimestamp()
         });
-        // Fecha o picker ao enviar figurinha
         esconderPaineis();
     } catch (erro) {
         console.error("Erro ao enviar figurinha: ", erro);
     }
 };
 
-/* --- RENDERIZAÇÃO DAS MENSAGENS --- */
+/* ─────────────────────────────────────────
+   RENDERIZAÇÃO DAS MENSAGENS
+───────────────────────────────────────── */
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
@@ -320,12 +519,3 @@ function carregarMensagens() {
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
-
-window.iniciarCompartilhamento = async function() {
-    try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
-        document.getElementById("screen-video").srcObject = stream;
-    } catch (erro) {
-        console.error("Erro ao compartilhar a tela: ", erro);
-    }
-};
