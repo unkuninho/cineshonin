@@ -15,7 +15,7 @@ const db = getFirestore(app);
 let usuarioAtual = "";
 let todasFigurinhas = []; 
 let pacotesDisponiveis = new Set();
-let arquivoPendenteUpload = null; // Guarda a imagem temporariamente enquanto a janela de pacote está aberta
+let arquivoPendenteUpload = null; 
 
 const avatares = {
     "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
@@ -39,6 +39,8 @@ window.entrarNaSala = function(nome) {
     });
 };
 
+/* --- TELA CHEIA, TRANSPARÊNCIA, HISTÓRICO GERAL --- */
+
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => console.error(err));
@@ -47,7 +49,9 @@ window.toggleFullScreen = function() {
     }
 };
 
-window.mudarTransparencia = function(valor) { document.documentElement.style.setProperty('--bg-alpha', valor); };
+window.mudarTransparencia = function(valor) { 
+    document.documentElement.style.setProperty('--bg-alpha', valor); 
+};
 
 window.apagarHistorico = async function() {
     if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat. Tem certeza?")) {
@@ -70,18 +74,23 @@ window.editarMensagem = async function(idMsg) {
     }
 };
 
+/* --- PAINÉIS --- */
+
 function esconderPainéis() {
     document.getElementById("emoji-picker").classList.add("hidden");
     document.getElementById("sticker-picker").classList.add("hidden");
 }
+
 window.toggleEmojiPicker = function() {
     document.getElementById("emoji-picker").classList.toggle("hidden");
     document.getElementById("sticker-picker").classList.add("hidden");
 };
+
 window.toggleStickerPicker = function() {
     document.getElementById("sticker-picker").classList.toggle("hidden");
     document.getElementById("emoji-picker").classList.add("hidden");
 };
+
 document.getElementById("emoji-picker").addEventListener('emoji-click', event => {
     const input = document.getElementById("message-input");
     input.value += event.detail.unicode;
@@ -98,6 +107,8 @@ window.enviarMensagem = async function() {
         esconderPainéis();
     } catch (e) { console.error(e); }
 };
+
+/* --- SISTEMA DE PACOTES E RECENTES --- */
 
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
@@ -170,13 +181,13 @@ function renderizarRecentes() {
     recentes.forEach(url => {
         const img = document.createElement("img");
         img.src = url;
-        img.className = "sticker-item"; // Agora usa a classe ajustada no CSS
+        img.className = "sticker-item"; 
         img.onclick = () => enviarFigurinhaSalva(url);
         grid.appendChild(img);
     });
 }
 
-/* --- NOVO: LÓGICA DO MODAL DE UPLOAD DE PACOTES --- */
+/* --- LÓGICA DO MODAL DE UPLOAD DE PACOTES --- */
 
 window.prepararUpload = function(event) {
     const file = event.target.files[0];
@@ -190,26 +201,20 @@ window.prepararUpload = function(event) {
     }
     
     arquivoPendenteUpload = file;
-    event.target.value = ''; // Limpa o input
+    event.target.value = ''; 
     
-    // Preenche as opções de pacotes no Modal
     const selectUpload = document.getElementById("upload-pack-select");
     selectUpload.innerHTML = '';
     
-    // Lista os pacotes existentes
     pacotesDisponiveis.forEach(p => selectUpload.innerHTML += `<option value="${p}">${p}</option>`);
-    
-    // Adiciona a opção de criar um novo
     selectUpload.innerHTML += `<option value="NOVO" style="font-weight:bold; color:#5865F2;">+ Criar Novo Pacote...</option>`;
     
-    // Se não tiver nenhum pacote ainda, força a criação do primeiro
     if (pacotesDisponiveis.size === 0) {
         selectUpload.value = "NOVO";
     }
 
-    // Mostra o modal
     document.getElementById("upload-modal").classList.remove("hidden");
-    toggleNewPackInput(); // Checa se precisa exibir o input de texto
+    toggleNewPackInput(); 
 };
 
 window.fecharModalUpload = function() {
@@ -233,6 +238,9 @@ window.toggleNewPackInput = function() {
 window.confirmarUpload = function() {
     if (!arquivoPendenteUpload) return;
     
+    // Salva a imagem em uma variável segura ANTES de fechar o modal
+    const arquivoSeguro = arquivoPendenteUpload;
+    
     const select = document.getElementById("upload-pack-select");
     let nomePacote = select.value;
     
@@ -244,7 +252,7 @@ window.confirmarUpload = function() {
         }
     }
     
-    // Fecha o modal antes de começar a converter
+    // Fecha o modal em paz, pois a imagem já está salva em 'arquivoSeguro'
     fecharModalUpload();
 
     const grid = document.getElementById("sticker-grid");
@@ -268,7 +276,9 @@ window.confirmarUpload = function() {
             if(loadElement) loadElement.remove();
         }
     };
-    reader.readAsDataURL(arquivoPendenteUpload);
+    
+    // Usa a variável segura para fazer a leitura
+    reader.readAsDataURL(arquivoSeguro);
 };
 
 window.enviarFigurinhaSalva = async function(base64String) {
@@ -283,6 +293,8 @@ window.enviarFigurinhaSalva = async function(base64String) {
 
     } catch (erro) { console.error(erro); }
 };
+
+/* --- RENDERIZAÇÃO DAS MENSAGENS NO CHAT --- */
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
