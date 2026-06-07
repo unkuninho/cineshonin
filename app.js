@@ -149,6 +149,12 @@ function ouvirPresenca() {
 
 window.entrarNaSala = function(nome) {
     usuarioAtual = nome;
+    
+    // Pede permissão para notificações assim que entrar na sala
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
     document.getElementById("login-screen").classList.add("hidden");
     document.getElementById("room-screen").classList.remove("hidden");
     
@@ -165,7 +171,6 @@ window.entrarNaSala = function(nome) {
         const isVisible = !document.hidden;
         marcarPresenca(usuarioAtual, isVisible); 
         
-        // Garante que se o usuário voltar para a aba, as mensagens pendentes sejam lidas
         if(isVisible) {
             getDocs(query(collection(db, "mensagens"))).then(snap => {
                 snap.forEach(d => {
@@ -251,7 +256,7 @@ function aplicarNovoPerfil(novoNome, novaFoto) {
 }
 
 /* ─────────────────────────────────────────
-   TELA CHEIA, ARRASTE DO CHAT E INTERFACE
+   TELA CHEIA E ARRASTE DO CHAT
 ───────────────────────────────────────── */
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.error(err));
@@ -270,7 +275,6 @@ window.apagarHistorico = async function() {
     }
 };
 
-/* Sistema para arrastar a janela do chat */
 const overlayPanel = document.getElementById("overlay-panel");
 const dragHandle = document.getElementById("drag-handle");
 let isDragging = false;
@@ -328,7 +332,6 @@ document.getElementById("emoji-picker").addEventListener('emoji-click', event =>
     const input = document.getElementById("message-input"); input.value += event.detail.unicode; input.focus();
 });
 
-/* Sistema de Respostas */
 window.prepararResposta = function(idMsg, autor, texto, tipo) {
     respondendoA = { id: idMsg, autor: autor, texto: texto, tipo: tipo };
     document.getElementById("reply-preview-author").textContent = autor;
@@ -392,7 +395,7 @@ window.salvarNovaFigurinha = async function(event) {
 };
 
 /* ─────────────────────────────────────────
-   RENDERIZAÇÃO DO CHAT
+   RENDERIZAÇÃO DO CHAT E NOTIFICAÇÕES
 ───────────────────────────────────────── */
 function formatarDataHora(timestamp) {
     if (!timestamp) return "";
@@ -404,11 +407,34 @@ function formatarDataHora(timestamp) {
     return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
 }
 
-const opacidades = [0.5, 0.65, 0.8, 0.95, 1];
+// Opacidade fixada em 100% (1) para as 5 mensagens, deixando-as totalmente visíveis!
+const opacidades = [1, 1, 1, 1, 1]; 
+
+let isInitialLoad = true;
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
     onSnapshot(q, (snapshot) => {
+        
+        // Disparo das Notificações (Só faz se não for o carregamento inicial da página)
+        if (!isInitialLoad) {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const msg = change.doc.data();
+                    // Se a mensagem não for minha E eu estiver fora da aba
+                    if (msg.autor !== usuarioAtual && document.hidden) {
+                        if (Notification.permission === "granted") {
+                            const notifText = msg.tipo === 'figurinha' ? '🖼️ Nova figurinha' : msg.texto;
+                            new Notification(`Mensagem de ${msg.autor}`, {
+                                body: notifText,
+                                icon: avatares[msg.autor] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+                            });
+                        }
+                    }
+                }
+            });
+        }
+
         const chatBox = document.getElementById("chat-box"); chatBox.innerHTML = "";
         const todas = []; snapshot.forEach((d) => todas.push({ id: d.id, ...d.data() }));
         const ultimas = todas.slice(-5);
@@ -460,7 +486,9 @@ function carregarMensagens() {
 
             msgElement.innerHTML = isOwn ? bubbleHTML + avatarHTML : avatarHTML + bubbleHTML; chatBox.appendChild(msgElement);
         });
+        
         chatBox.scrollTop = chatBox.scrollHeight;
+        isInitialLoad = false;
     });
 }
 

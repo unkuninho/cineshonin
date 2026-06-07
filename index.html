@@ -64,7 +64,7 @@
         #sem-transmissao svg { opacity: 0.2; }
 
         /* ══════════════════════════════
-           PAINEL ESQUERDO (Retrátil com Controles)
+           PAINEL ESQUERDO (Retrátil)
         ══════════════════════════════ */
         #left-panel-wrapper { position: absolute; top: 20px; left: 0; z-index: 20; display: flex; align-items: flex-start; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #left-panel-wrapper.minimized { transform: translateX(calc(-100% + 24px)); }
@@ -99,7 +99,7 @@
         .btn-share.transmitindo:hover { background: rgba(237,66,69,0.2); }
 
         /* ══════════════════════════════
-           PAINEL DIREITO (Apenas Chat e Input - ARRASTÁVEL)
+           PAINEL DIREITO (Chat Arrastável)
         ══════════════════════════════ */
         #overlay-panel { 
             position: absolute; bottom: 20px; right: 20px; width: 370px; 
@@ -146,11 +146,9 @@
 
         .msg-editado { font-size: 10px; color: rgba(255,255,255,0.4); font-style: italic; }
 
-        /* Blocos de Resposta */
         .reply-block { background: rgba(0,0,0,0.25); border-left: 3px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; font-size: 11px; color: rgba(255,255,255,0.8); }
         .reply-block strong { color: rgba(255,255,255,0.9); display: block; margin-bottom: 2px;}
 
-        /* Ícone de Lido (✓✓) */
         .msg-status { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: bottom; position: relative; top: 3px; }
         .msg-status svg { width: 14px; height: 14px; }
 
@@ -160,7 +158,6 @@
         .btn-action { background: none; border: none; cursor: pointer; transition: 0.15s; padding: 4px 5px; border-radius: 5px; color: rgba(255,255,255,0.65); display: flex; align-items: center; }
         .btn-action:hover { background: rgba(255,255,255,0.1); color: white; transform: scale(1.1); }
 
-        /* PREVIEW DE RESPOSTA */
         #reply-preview-container { display: flex; justify-content: space-between; align-items: center; background: rgba(12, 12, 16, 0.9); border-left: 3px solid #5865F2; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
         .reply-preview-content { display: flex; flex-direction: column; overflow: hidden; }
         #reply-preview-author { font-size: 11px; font-weight: 600; color: #5865F2; margin-bottom: 2px;}
@@ -168,7 +165,7 @@
         .btn-cancel-reply { background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;}
         .btn-cancel-reply:hover { color: #ed4245; }
 
-        /* ── PICKERS ── */
+        /* ── PICKERS E INPUTS ── */
         emoji-picker { position: absolute; bottom: 65px; right: 15px; z-index: 100; height: 320px; --background: #1e1f24; --border-color: rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         #sticker-picker { position: absolute; bottom: 65px; right: 15px; width: 310px; height: 310px; background: #1e1f24; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.65); }
@@ -184,8 +181,7 @@
         .sticker-wrapper:hover .sticker-del-btn { display: flex; }
         .sticker-del-btn:hover { background: #c03537; transform: scale(1.1); }
 
-        /* ── INPUT GROUP ── */
-        .input-group { display: flex; gap: 6px; align-items: center; }
+        .input-group { display: flex; gap: 6px; align-items: center; transition: 0.2s; }
         .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; padding: 0; width: 36px; height: 36px; border-radius: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: rgba(255,255,255,0.5); }
         .btn-icon:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.85); }
         input[type="text"] { flex-grow: 1; padding: 9px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.06); color: white; outline: none; font-size: 13.5px; transition: border 0.2s, background 0.2s; min-width: 0; }
@@ -204,12 +200,18 @@
             box-shadow: none !important;
         }
         
-        /* Deixa o puxador bem discreto na tela cheia pra não atrapalhar o filme */
         body.fullscreen-active #drag-handle { opacity: 0.15; }
         body.fullscreen-active #drag-handle:hover { opacity: 0.8; }
 
+        /* Adicionando fundo na área de digitar na tela cheia para não sumir */
+        body.fullscreen-active .input-group {
+            background: rgba(12, 12, 16, 0.85);
+            padding: 8px; border-radius: 16px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
         /* ══════════════════════════════
-           MODAIS PERSONALIZADOS (Perfil/Cropper)
+           MODAIS PERSONALIZADOS
         ══════════════════════════════ */
         .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .custom-modal { background: #1e1f24; padding: 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 340px; display: flex; flex-direction: column; gap: 16px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
