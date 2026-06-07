@@ -57,6 +57,15 @@ window.iniciarCompartilhamento = async function() {
     oldAnswers.forEach(d => deleteDoc(d.ref));
 
     peerConnection = new RTCPeerConnection(rtcConfig);
+    
+    // Auto-limpeza se a internet oscilar e a conexão morrer
+    peerConnection.oniceconnectionstatechange = () => {
+        if (peerConnection.iceConnectionState === "disconnected" || peerConnection.iceConnectionState === "failed") {
+            console.log("Conexão de vídeo caiu. Limpando...");
+            pararTransmissao();
+        }
+    };
+
     let answerCandidatesQueue = []; 
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -74,10 +83,15 @@ window.iniciarCompartilhamento = async function() {
         const dados = snap.data();
         if (!peerConnection) return;
         
-        if (dados?.answer && peerConnection.signalingState === "have-local-offer") { 
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
-            answerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e => console.error(e)));
-            answerCandidatesQueue = [];
+        // A trava !peerConnection.currentRemoteDescription impede que a resposta seja lida duas vezes
+        if (dados?.answer && !peerConnection.currentRemoteDescription && peerConnection.signalingState === "have-local-offer") { 
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
+                answerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e => console.error(e)));
+                answerCandidatesQueue = [];
+            } catch (erro) {
+                console.error("Erro ao configurar vídeo:", erro);
+            }
         }
     });
 
@@ -109,6 +123,7 @@ function pararTransmissao() {
     const btnShare = document.getElementById("btn-share");
     btnShare.classList.remove("transmitindo");
     btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Compartilhar tela`;
+    
     setDoc(refChamada(), { offer: null, answer: null });
 }
 
@@ -128,6 +143,21 @@ async function entrarComoEspectadora() {
         if (peerConnection) return;
         
         peerConnection = new RTCPeerConnection(rtcConfig);
+        
+        // Auto-limpeza se a tela do Kunin sumir do nada
+        peerConnection.oniceconnectionstatechange = () => {
+            if (peerConnection.iceConnectionState === "disconnected" || peerConnection.iceConnectionState === "failed") {
+                console.log("Conexão com a transmissão caiu.");
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
+                document.getElementById("screen-video").srcObject = null;
+                document.getElementById("screen-video").classList.add("hidden");
+                document.getElementById("sem-transmissao").classList.remove("hidden");
+            }
+        };
+
         let offerCandidatesQueue = []; 
 
         peerConnection.ontrack = (event) => {
@@ -304,7 +334,6 @@ window.compartilharNoX = function() {
 
     const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
     
-    // Usando a API de intents oficial do Twitter que aceita perfeitamente espaços e caracteres especiais
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`;
     
     window.open(url, '_blank');
@@ -492,7 +521,6 @@ function carregarMensagens() {
         const ultimas = todas.slice(-5);
 
         ultimas.forEach((mensagem, idx) => {
-            // CORRIGIDO: Removido o messageRow = que causou o erro!
             const idMsg = mensagem.id; const isOwn = mensagem.autor === usuarioAtual; const opacidade = opacidades[idx];
 
             if (!isOwn && !mensagem.lida && document.visibilityState === 'visible') {
