@@ -271,6 +271,20 @@ window.apagarHistorico = async function() {
 };
 
 /* ─────────────────────────────────────────
+   DETECTOR DE TELA CHEIA
+───────────────────────────────────────── */
+document.addEventListener("fullscreenchange", () => {
+    const chatBox = document.getElementById("chat-box");
+    if (document.fullscreenElement) {
+        document.body.classList.add("fullscreen-active");
+        setTimeout(() => { if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 100);
+    } else {
+        document.body.classList.remove("fullscreen-active");
+        setTimeout(() => { if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 100);
+    }
+});
+
+/* ─────────────────────────────────────────
    EDIÇÃO E EXCLUSÃO
 ───────────────────────────────────────── */
 
@@ -413,7 +427,6 @@ function formatarDataHora(timestamp) {
     return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
 }
 
-// índice 0 = mais antiga (mais transparente), índice 4 = mais nova (opaca)
 const opacidades = [0.12, 0.28, 0.5, 0.72, 1];
 
 function carregarMensagens() {
@@ -431,14 +444,12 @@ function carregarMensagens() {
             const isOwn = mensagem.autor === usuarioAtual;
             const opacidade = opacidades[idx];
 
-            // Separador de data/hora
             const separador = document.createElement("div");
             separador.className = "msg-separador";
             separador.textContent = formatarDataHora(mensagem.hora);
             separador.style.opacity = opacidade * 0.6;
             chatBox.appendChild(separador);
 
-            // Linha da mensagem
             const msgElement = document.createElement("div");
             msgElement.className = `message-row ${isOwn ? 'own' : 'other'}`;
             msgElement.style.opacity = opacidade;
@@ -466,7 +477,6 @@ function carregarMensagens() {
                 if (mensagem.editado) conteudoHTML += ` <span class="msg-editado">(editado)</span>`;
             }
 
-            // Nome acima do balão (só para quem recebe, estilo WhatsApp)
             const nomeHTML = (!isOwn && mensagem.tipo !== "figurinha")
                 ? `<div class="message-author-above">${mensagem.autor}</div>`
                 : "";
@@ -486,4 +496,30 @@ function carregarMensagens() {
 
         chatBox.scrollTop = chatBox.scrollHeight;
     });
+}
+
+/* ─────────────────────────────────────────
+   FUNDO ANIMADO DO LOGIN
+───────────────────────────────────────── */
+const fotosDeFundo = [
+    "LINK_DIRETO_DA_SUA_FOTO_1.jpg",
+    "LINK_DIRETO_DA_SUA_FOTO_2.jpg",
+    "LINK_DIRETO_DA_SUA_FOTO_3.jpg",
+    "LINK_DIRETO_DA_SUA_FOTO_4.jpg",
+    "LINK_DIRETO_DA_SUA_FOTO_5.jpg"
+];
+
+let indexFotoFundo = 0;
+
+function rotacionarFundo() {
+    const loginScreen = document.getElementById("login-screen");
+    if (loginScreen && !loginScreen.classList.contains("hidden")) {
+        loginScreen.style.backgroundImage = `url('${fotosDeFundo[indexFotoFundo]}')`;
+        indexFotoFundo = (indexFotoFundo + 1) % fotosDeFundo.length;
+    }
+}
+
+if(fotosDeFundo[0]) {
+    rotacionarFundo();
+    setInterval(rotacionarFundo, 6000); 
 }
