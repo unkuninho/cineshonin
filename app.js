@@ -51,9 +51,19 @@ window.iniciarCompartilhamento = async function() {
     btnShare.classList.add("transmitindo");
     btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Parar transmissão`;
 
+    const oldOffers = await getDocs(refOfferCandidates());
+    oldOffers.forEach(d => deleteDoc(d.ref));
+    const oldAnswers = await getDocs(refAnswerCandidates());
+    oldAnswers.forEach(d => deleteDoc(d.ref));
+
     peerConnection = new RTCPeerConnection(rtcConfig);
+    let answerCandidatesQueue = []; 
+
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-    peerConnection.onicecandidate = (event) => { if (event.candidate) addDoc(refOfferCandidates(), event.candidate.toJSON()); };
+    
+    peerConnection.onicecandidate = (event) => { 
+        if (event.candidate) addDoc(refOfferCandidates(), event.candidate.toJSON()); 
+    };
     localStream.getVideoTracks()[0].onended = () => pararTransmissao();
 
     const offer = await peerConnection.createOffer();
@@ -63,12 +73,24 @@ window.iniciarCompartilhamento = async function() {
     onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
         if (!peerConnection) return;
-        if (dados?.answer && !peerConnection.currentRemoteDescription) await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
+        
+        if (dados?.answer && peerConnection.signalingState === "have-local-offer") { 
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
+            answerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e => console.error(e)));
+            answerCandidatesQueue = [];
+        }
     });
 
     onSnapshot(refAnswerCandidates(), (snap) => {
-        snap.docChanges().forEach(async (change) => {
-            if (change.type === "added" && peerConnection) await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        snap.docChanges().forEach((change) => {
+            if (change.type === "added" && peerConnection) {
+                const candidate = new RTCIceCandidate(change.doc.data());
+                if (peerConnection.remoteDescription) {
+                    peerConnection.addIceCandidate(candidate).catch(e => console.error(e));
+                } else {
+                    answerCandidatesQueue.push(candidate);
+                }
+            }
         });
     });
 };
@@ -87,6 +109,7 @@ function pararTransmissao() {
     const btnShare = document.getElementById("btn-share");
     btnShare.classList.remove("transmitindo");
     btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Compartilhar tela`;
+    
     setDoc(refChamada(), { offer: null, answer: null });
 }
 
@@ -104,24 +127,40 @@ async function entrarComoEspectadora() {
         }
 
         if (peerConnection) return;
+        
         peerConnection = new RTCPeerConnection(rtcConfig);
+        let offerCandidatesQueue = []; 
+
         peerConnection.ontrack = (event) => {
             const video = document.getElementById("screen-video");
             video.srcObject = event.streams[0]; video.classList.remove("hidden");
             document.getElementById("sem-transmissao").classList.add("hidden");
         };
 
-        peerConnection.onicecandidate = (event) => { if (event.candidate) addDoc(refAnswerCandidates(), event.candidate.toJSON()); };
+        peerConnection.onicecandidate = (event) => { 
+            if (event.candidate) addDoc(refAnswerCandidates(), event.candidate.toJSON()); 
+        };
+
+        onSnapshot(refOfferCandidates(), (snapCand) => {
+            snapCand.docChanges().forEach((change) => {
+                if (change.type === "added" && peerConnection) {
+                    const candidate = new RTCIceCandidate(change.doc.data());
+                    if (peerConnection.remoteDescription) {
+                        peerConnection.addIceCandidate(candidate).catch(e => console.error(e));
+                    } else {
+                        offerCandidatesQueue.push(candidate);
+                    }
+                }
+            });
+        });
+
         await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.offer));
+        offerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e => console.error(e)));
+        offerCandidatesQueue = [];
+
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         await updateDoc(refChamada(), { answer: { type: answer.type, sdp: answer.sdp } });
-
-        onSnapshot(refOfferCandidates(), (snapCand) => {
-            snapCand.docChanges().forEach(async (change) => {
-                if (change.type === "added" && peerConnection) await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-            });
-        });
     });
 }
 
@@ -255,7 +294,7 @@ function aplicarNovoPerfil(novoNome, novaFoto) {
 }
 
 /* ─────────────────────────────────────────
-   COMPARTILHAMENTO NO X (TWITTER) CORRIGIDO
+   COMPARTILHAMENTO NO X (TWITTER)
 ───────────────────────────────────────── */
 window.compartilharNoX = function() {
     const assistido = prompt("O que você estava assistindo?");
@@ -265,8 +304,6 @@ window.compartilharNoX = function() {
     if (!nota || nota.trim() === "") return;
 
     const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
-    
-    // Usando a API de intents oficial do Twitter que aceita perfeitamente espaços e caracteres especiais
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`;
     
     window.open(url, '_blank');
@@ -454,7 +491,7 @@ function carregarMensagens() {
         const ultimas = todas.slice(-5);
 
         ultimas.forEach((mensagem, idx) => {
-            const idMsg = mensagem.id; const isOwn = mensagem.autor === usuarioAtual; const opacidade = opacidades[idx];
+            const idMsg = messageRow = mensagem.id; const isOwn = mensagem.autor === usuarioAtual; const opacidade = opacidades[idx];
 
             if (!isOwn && !mensagem.lida && document.visibilityState === 'visible') {
                 updateDoc(doc(db, "mensagens", idMsg), { lida: true }).catch(e => console.log(e));
