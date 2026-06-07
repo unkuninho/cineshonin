@@ -255,7 +255,7 @@ function aplicarNovoPerfil(novoNome, novaFoto) {
 }
 
 /* ─────────────────────────────────────────
-   COMPARTILHAMENTO NO X (TWITTER)
+   COMPARTILHAMENTO NO X (TWITTER) CORRIGIDO
 ───────────────────────────────────────── */
 window.compartilharNoX = function() {
     const assistido = prompt("O que você estava assistindo?");
@@ -265,7 +265,9 @@ window.compartilharNoX = function() {
     if (!nota || nota.trim() === "") return;
 
     const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
-    const url = `https://x.com/compose/post?text=${encodeURIComponent(texto)}`;
+    
+    // Usando a API de intents oficial do Twitter que aceita perfeitamente espaços e caracteres especiais
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`;
     
     window.open(url, '_blank');
 };
