@@ -20,7 +20,9 @@
 
         .hidden { display: none !important; }
 
-        /* ── LOGIN ── */
+        /* ══════════════════════════════
+           LOGIN — tela maior
+        ══════════════════════════════ */
         #login-screen {
             display: flex;
             flex-direction: column;
@@ -31,20 +33,20 @@
         }
 
         .login-title {
-            font-size: 26px;
+            font-size: 36px;
             font-weight: 700;
             letter-spacing: -0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             color: white;
         }
 
         .login-subtitle {
-            font-size: 13px;
+            font-size: 15px;
             color: rgba(255,255,255,0.35);
-            margin-bottom: 48px;
+            margin-bottom: 64px;
         }
 
-        .login-cards { display: flex; gap: 24px; }
+        .login-cards { display: flex; gap: 48px; }
 
         .login-card {
             display: flex;
@@ -55,37 +57,39 @@
             transition: transform 0.2s;
         }
 
-        .login-card:hover { transform: translateY(-6px); }
+        .login-card:hover { transform: translateY(-8px); }
 
         .login-card-photo {
-            width: 120px;
-            height: 120px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2.5px solid rgba(255,255,255,0.12);
+            border: 3px solid rgba(255,255,255,0.12);
             transition: border-color 0.2s, box-shadow 0.2s;
             display: block;
         }
 
         .login-card:hover .login-card-photo {
             border-color: rgba(88, 101, 242, 0.7);
-            box-shadow: 0 0 0 4px rgba(88, 101, 242, 0.15);
+            box-shadow: 0 0 0 6px rgba(88, 101, 242, 0.15);
         }
 
         .login-card-name {
-            margin-top: 14px;
-            font-size: 16px;
+            margin-top: 20px;
+            font-size: 20px;
             font-weight: 600;
             color: rgba(255,255,255,0.85);
         }
 
         .login-card-hint {
-            margin-top: 4px;
-            font-size: 11px;
+            margin-top: 5px;
+            font-size: 13px;
             color: rgba(255,255,255,0.3);
         }
 
-        /* ── ROOM ── */
+        /* ══════════════════════════════
+           ROOM
+        ══════════════════════════════ */
         #room-screen { position: relative; width: 100vw; height: 100vh; }
 
         #video-container {
@@ -95,13 +99,11 @@
             position: relative;
         }
 
-        /* Vídeo principal: stream remoto (Shirlei assiste) */
         #screen-video {
             width: 100%; height: 100%;
             object-fit: contain;
         }
 
-        /* Placeholder quando não há transmissão (só para Shirlei) */
         #sem-transmissao {
             position: absolute;
             display: flex;
@@ -115,13 +117,11 @@
 
         #sem-transmissao svg { opacity: 0.2; }
 
-        /* Preview local pequeno (só para Kunin, canto superior esquerdo) */
+        /* Preview local (Kunin) */
         #local-preview {
             position: absolute;
-            top: 16px;
-            left: 16px;
-            width: 200px;
-            height: 120px;
+            top: 16px; left: 16px;
+            width: 220px; height: 130px;
             object-fit: contain;
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.12);
@@ -129,7 +129,30 @@
             z-index: 5;
         }
 
-        /* ── OVERLAY PANEL ── */
+        /* Botão toggle do preview */
+        #btn-toggle-preview {
+            position: absolute;
+            top: 16px; left: 246px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            z-index: 6;
+            transition: 0.2s;
+        }
+
+        #btn-toggle-preview:hover {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        /* ══════════════════════════════
+           OVERLAY PANEL
+        ══════════════════════════════ */
         #overlay-panel {
             position: absolute;
             bottom: 20px; right: 20px;
@@ -143,8 +166,8 @@
             flex-direction: column;
             gap: 10px;
             z-index: 10;
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.07);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
             transition: background 0.1s ease;
         }
 
@@ -158,11 +181,8 @@
         }
 
         #user-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
+            display: flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 600;
             color: rgba(255,255,255,0.55);
             background: rgba(255,255,255,0.06);
             padding: 3px 10px 3px 8px;
@@ -172,17 +192,13 @@
         }
 
         #presence-badge {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: rgba(255,255,255,0.4);
+            display: flex; align-items: center; gap: 5px;
+            font-size: 11px; color: rgba(255,255,255,0.4);
         }
 
         .presence-dot {
             width: 7px; height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
+            border-radius: 50%; flex-shrink: 0;
             transition: background 0.4s;
         }
 
@@ -194,14 +210,9 @@
         .btn-top {
             background: transparent;
             border: 1px solid rgba(255,255,255,0.08);
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 8px;
-            transition: 0.2s;
-            color: rgba(255,255,255,0.55);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            cursor: pointer; padding: 6px; border-radius: 8px;
+            transition: 0.2s; color: rgba(255,255,255,0.55);
+            display: flex; align-items: center; justify-content: center;
             width: 30px; height: 30px;
         }
 
@@ -210,13 +221,10 @@
         .btn-top svg { display: block; }
 
         .transparency-wrap {
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            display: flex; align-items: center; gap: 5px;
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.07);
-            border-radius: 8px;
-            padding: 4px 8px;
+            border-radius: 8px; padding: 4px 8px;
         }
 
         .transparency-wrap span { font-size: 10px; color: rgba(255,255,255,0.35); white-space: nowrap; }
@@ -235,61 +243,59 @@
 
         /* ── SHARE BUTTON ── */
         .btn-share {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
             background: rgba(255,255,255,0.05);
             color: rgba(255,255,255,0.6);
             border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 10px;
-            padding: 8px 12px;
-            width: 100%;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: 0.2s;
+            border-radius: 10px; padding: 8px 12px;
+            width: 100%; font-size: 12px;
+            cursor: pointer; font-weight: 500; transition: 0.2s;
         }
 
         .btn-share:hover { background: rgba(255,255,255,0.09); color: white; border-color: rgba(255,255,255,0.14); }
         .btn-share svg { opacity: 0.7; }
 
-        /* Estado: transmitindo */
         .btn-share.transmitindo {
             background: rgba(237,66,69,0.12);
             border-color: rgba(237,66,69,0.3);
             color: #ed4245;
         }
-        .btn-share.transmitindo:hover {
-            background: rgba(237,66,69,0.2);
-        }
+        .btn-share.transmitindo:hover { background: rgba(237,66,69,0.2); }
         .btn-share.transmitindo svg { opacity: 1; }
 
-        /* ── CHAT BOX ── */
+        /* ══════════════════════════════
+           CHAT — estilo WhatsApp/iMessage
+           sem scroll, últimas 5, fade
+        ══════════════════════════════ */
         #chat-box {
-            height: 270px;
-            overflow-y: auto;
-            padding-right: 3px;
             display: flex;
             flex-direction: column;
+            gap: 2px;
+            /* sem altura fixa, sem overflow — as msgs simplesmente existem */
+            padding: 4px 0;
         }
 
-        #chat-box::-webkit-scrollbar { width: 4px; }
-        #chat-box::-webkit-scrollbar-track { background: transparent; }
-        #chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
+        /* Separador de data/hora entre mensagens */
+        .msg-separador {
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            margin: 2px 0 1px;
+            letter-spacing: 0.3px;
+        }
 
-        /* ── MESSAGES ── */
+        /* Linha da mensagem */
         .message-row {
             display: flex;
             width: 100%;
-            margin-bottom: 10px;
             align-items: flex-end;
             position: relative;
-            animation: msgIn 0.16s ease;
+            animation: msgIn 0.18s ease;
+            /* opacidade controlada via JS */
         }
 
         @keyframes msgIn {
-            from { opacity: 0; transform: translateY(5px); }
+            from { opacity: 0; transform: translateY(4px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
@@ -297,38 +303,54 @@
         .message-row.other { justify-content: flex-start; }
 
         .avatar {
-            width: 26px; height: 26px;
-            border-radius: 50%;
-            object-fit: cover;
+            width: 24px; height: 24px;
+            border-radius: 50%; object-fit: cover;
             flex-shrink: 0;
             border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .message-row.own   .avatar { margin-left: 7px; }
-        .message-row.other .avatar { margin-right: 7px; }
+        .message-row.own   .avatar { margin-left: 6px; }
+        .message-row.other .avatar { margin-right: 6px; }
 
+        /* Coluna que agrupa nome + balão */
+        .msg-col { display: flex; flex-direction: column; max-width: 78%; }
+        .col-own  { align-items: flex-end; }
+        .col-other { align-items: flex-start; }
+
+        /* Nome acima do balão (só para mensagens recebidas) */
+        .message-author-above {
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 2px;
+            padding-left: 2px;
+        }
+
+        /* Balão */
         .message-bubble {
-            max-width: 78%;
-            padding: 9px 13px;
-            border-radius: 18px;
-            font-size: 13.5px;
-            line-height: 1.45;
+            padding: 7px 11px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.4;
             word-wrap: break-word;
             position: relative;
         }
 
         .message-row.own .message-bubble {
-            background: #5865F2;
+            background: rgba(88,101,242,0.75);
             color: #fff;
-            border-bottom-right-radius: 5px;
-            box-shadow: 0 2px 8px rgba(88,101,242,0.3);
+            border-bottom-right-radius: 4px;
+            backdrop-filter: blur(4px);
         }
 
         .message-row.other .message-bubble {
-            background: #25262b;
+            background: rgba(30,31,36,0.8);
             color: #e8e8e8;
-            border-bottom-left-radius: 5px;
+            border-bottom-left-radius: 4px;
             border: 1px solid rgba(255,255,255,0.06);
+            backdrop-filter: blur(4px);
         }
 
         .message-bubble.is-sticker {
@@ -337,22 +359,19 @@
         }
 
         .sticker-img {
-            max-width: 130px; max-height: 130px;
+            max-width: 110px; max-height: 110px;
             object-fit: contain; border-radius: 8px; cursor: pointer;
         }
 
-        .message-author {
-            font-size: 10px; color: rgba(255,255,255,0.38);
-            margin-bottom: 4px; display: block;
-            font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+        .msg-editado {
+            font-size: 10px; color: rgba(255,255,255,0.4); font-style: italic;
         }
 
-        .message-row.own .message-author { display: none; }
-
+        /* Botões de ação */
         .msg-actions {
             display: none;
             position: absolute;
-            top: -20px; right: 10px;
+            top: -22px; right: 8px;
             background: #1e1f24;
             border-radius: 7px;
             padding: 3px 5px;
@@ -391,7 +410,7 @@
             border: 1px solid rgba(255,255,255,0.08);
             z-index: 100;
             display: flex; flex-direction: column;
-            padding: 12px; box-sizing: border-box;
+            padding: 12px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.6);
         }
 
@@ -417,10 +436,7 @@
         #sticker-grid::-webkit-scrollbar { width: 4px; }
         #sticker-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 
-        .sticker-wrapper {
-            position: relative;
-            width: 66px; height: 66px;
-        }
+        .sticker-wrapper { position: relative; width: 66px; height: 66px; }
 
         .sticker-item {
             width: 66px; height: 66px;
@@ -435,15 +451,11 @@
 
         .sticker-del-btn {
             display: none;
-            position: absolute;
-            top: -5px; right: -5px;
-            width: 18px; height: 18px;
-            border-radius: 50%;
-            background: #ed4245;
-            border: none; cursor: pointer;
+            position: absolute; top: -5px; right: -5px;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: #ed4245; border: none; cursor: pointer;
             align-items: center; justify-content: center;
-            padding: 0; z-index: 2;
-            transition: 0.15s;
+            padding: 0; z-index: 2; transition: 0.15s;
         }
 
         .sticker-wrapper:hover .sticker-del-btn { display: flex; }
@@ -455,13 +467,11 @@
         .btn-icon {
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.08);
-            cursor: pointer;
-            padding: 0;
+            cursor: pointer; padding: 0;
             width: 36px; height: 36px;
             border-radius: 10px; transition: 0.2s;
             display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-            color: rgba(255,255,255,0.5);
+            flex-shrink: 0; color: rgba(255,255,255,0.5);
         }
 
         .btn-icon:hover {
@@ -521,17 +531,17 @@
     <!-- ROOM -->
     <div id="room-screen" class="hidden">
         <div id="video-container">
-            <!-- Stream remoto: Shirlei vê aqui -->
             <video id="screen-video" autoplay playsinline class="hidden"></video>
 
-            <!-- Preview local: Kunin vê uma miniatura da própria tela -->
             <video id="local-preview" autoplay playsinline muted class="hidden"></video>
 
-            <!-- Placeholder quando não há transmissão -->
+            <button id="btn-toggle-preview" class="hidden" onclick="togglePreview()" title="Esconder preview">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 7s2.5-4.5 6-4.5S13 7 13 7s-2.5 4.5-6 4.5S1 7 1 7z"/><circle cx="7" cy="7" r="1.8"/></svg>
+            </button>
+
             <div id="sem-transmissao">
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="8" width="40" height="28" rx="3"/>
-                    <path d="M16 44h16M24 36v8"/>
+                    <rect x="4" y="8" width="40" height="28" rx="3"/><path d="M16 44h16M24 36v8"/>
                 </svg>
                 <span>aguardando transmissão...</span>
             </div>
@@ -567,7 +577,7 @@
                 </div>
             </div>
 
-            <!-- BOTÃO DE COMPARTILHAR (só aparece para Kunin, via JS) -->
+            <!-- SHARE (só Kunin) -->
             <button id="btn-share" class="btn-share hidden" onclick="iniciarCompartilhamento()">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
                 Compartilhar tela

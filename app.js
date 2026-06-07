@@ -31,7 +31,6 @@ const SALA_ID = "sala-principal";
 let peerConnection = null;
 let localStream = null;
 
-// Referências no Firestore para a chamada
 function refChamada()          { return doc(db, "chamada", SALA_ID); }
 function refOfferCandidates()  { return collection(db, "chamada", SALA_ID, "offerCandidates"); }
 function refAnswerCandidates() { return collection(db, "chamada", SALA_ID, "answerCandidates"); }
@@ -40,7 +39,6 @@ function refAnswerCandidates() { return collection(db, "chamada", SALA_ID, "answ
 window.iniciarCompartilhamento = async function() {
     const btnShare = document.getElementById("btn-share");
 
-    // Se já está transmitindo, para a transmissão
     if (localStream) {
         pararTransmissao();
         return;
@@ -53,82 +51,62 @@ window.iniciarCompartilhamento = async function() {
         return;
     }
 
-    // Mostra o stream local no vídeo principal (para o Kunin ver o que está transmitindo)
     const screenVideo = document.getElementById("screen-video");
     screenVideo.srcObject = localStream;
     screenVideo.classList.remove("hidden");
     document.getElementById("sem-transmissao").classList.add("hidden");
 
-    // Mostra preview local pequeno no canto (opcional, pode remover se preferir)
     const videoLocal = document.getElementById("local-preview");
     videoLocal.srcObject = localStream;
     videoLocal.classList.remove("hidden");
 
-    // Atualiza botão
+    document.getElementById("btn-toggle-preview").classList.remove("hidden");
+
     btnShare.classList.add("transmitindo");
-    btnShare.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
-        Parar transmissão`;
+    btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Parar transmissão`;
 
     peerConnection = new RTCPeerConnection(rtcConfig);
-
-    // Adiciona as trilhas de vídeo/áudio na conexão
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-    // Quando o browser descobrir um ICE candidate, salva no Firestore
     peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            addDoc(refOfferCandidates(), event.candidate.toJSON());
-        }
+        if (event.candidate) addDoc(refOfferCandidates(), event.candidate.toJSON());
     };
 
-    // Para a transmissão se o usuário fechar o compartilhamento pelo próprio browser
     localStream.getVideoTracks()[0].onended = () => pararTransmissao();
 
-    // Cria a offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    // Salva a offer no Firestore (sobrescreve qualquer anterior)
     await setDoc(refChamada(), {
         offer: { type: offer.type, sdp: offer.sdp },
         answer: null
     });
 
-    // Fica ouvindo a answer que a Shirlei vai criar
     onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
         if (!peerConnection) return;
         if (dados?.answer && !peerConnection.currentRemoteDescription) {
-            const answerDesc = new RTCSessionDescription(dados.answer);
-            await peerConnection.setRemoteDescription(answerDesc);
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
         }
     });
 
-    // Fica ouvindo os ICE candidates da Shirlei
     onSnapshot(refAnswerCandidates(), (snap) => {
         snap.docChanges().forEach(async (change) => {
-            if (change.type === "added" && peerConnection) {
+            if (change.type === "added" && peerConnection)
                 await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-            }
         });
     });
 };
 
-/* Para a transmissão (Kunin) */
 function pararTransmissao() {
-    if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-    }
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
 
     const videoLocal = document.getElementById("local-preview");
     videoLocal.srcObject = null;
     videoLocal.classList.add("hidden");
+
+    document.getElementById("btn-toggle-preview").classList.add("hidden");
 
     const screenVideo = document.getElementById("screen-video");
     screenVideo.srcObject = null;
@@ -137,23 +115,28 @@ function pararTransmissao() {
 
     const btnShare = document.getElementById("btn-share");
     btnShare.classList.remove("transmitindo");
-    btnShare.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>
-        Compartilhar tela`;
+    btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Compartilhar tela`;
 
-    // Limpa a chamada no Firestore
     setDoc(refChamada(), { offer: null, answer: null });
 }
 
-/* Shirlei: entra automaticamente se houver uma offer ativa */
+/* Toggle do preview local */
+window.togglePreview = function() {
+    const preview = document.getElementById("local-preview");
+    const btn = document.getElementById("btn-toggle-preview");
+    const hidden = preview.classList.toggle("hidden");
+    btn.title = hidden ? "Mostrar preview" : "Esconder preview";
+    btn.innerHTML = hidden
+        ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 7s2.5-4.5 6-4.5S13 7 13 7s-2.5 4.5-6 4.5S1 7 1 7z"/><circle cx="7" cy="7" r="1.8"/><line x1="2" y1="2" x2="12" y2="12"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 7s2.5-4.5 6-4.5S13 7 13 7s-2.5 4.5-6 4.5S1 7 1 7z"/><circle cx="7" cy="7" r="1.8"/></svg>`;
+};
+
+/* Shirlei: espectadora */
 async function entrarComoEspectadora() {
-    // Fica ouvindo o documento de chamada
     onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
 
-        // Sem offer ou já tem answer (já conectada): ignora
         if (!dados?.offer) {
-            // Se havia conexão e a offer sumiu, limpa o vídeo
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -164,12 +147,10 @@ async function entrarComoEspectadora() {
             return;
         }
 
-        // Já está conectada: não refaz
         if (peerConnection) return;
 
         peerConnection = new RTCPeerConnection(rtcConfig);
 
-        // Quando receber o stream remoto, coloca no <video>
         peerConnection.ontrack = (event) => {
             const video = document.getElementById("screen-video");
             video.srcObject = event.streams[0];
@@ -177,31 +158,19 @@ async function entrarComoEspectadora() {
             document.getElementById("sem-transmissao").classList.add("hidden");
         };
 
-        // Quando descobrir um ICE candidate, salva como answerCandidate
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                addDoc(refAnswerCandidates(), event.candidate.toJSON());
-            }
+            if (event.candidate) addDoc(refAnswerCandidates(), event.candidate.toJSON());
         };
 
-        // Define a offer como descrição remota
         await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.offer));
-
-        // Cria a answer
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
+        await updateDoc(refChamada(), { answer: { type: answer.type, sdp: answer.sdp } });
 
-        // Salva a answer no Firestore
-        await updateDoc(refChamada(), {
-            answer: { type: answer.type, sdp: answer.sdp }
-        });
-
-        // Fica ouvindo os ICE candidates do Kunin
         onSnapshot(refOfferCandidates(), (snapCand) => {
             snapCand.docChanges().forEach(async (change) => {
-                if (change.type === "added" && peerConnection) {
+                if (change.type === "added" && peerConnection)
                     await peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                }
             });
         });
     });
@@ -219,18 +188,18 @@ async function marcarPresenca(nome, online) {
 }
 
 function ouvirPresenca() {
-    const outrousuario = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
-    onSnapshot(doc(db, "presenca", outrousuario), (snap) => {
+    const outro = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
+    onSnapshot(doc(db, "presenca", outro), (snap) => {
         const dados = snap.data();
         const dot = document.getElementById("presence-dot");
         const label = document.getElementById("presence-label");
         if (!dot || !label) return;
         if (dados && dados.online) {
             dot.className = "presence-dot online";
-            label.textContent = outrousuario + " online";
+            label.textContent = outro + " online";
         } else {
             dot.className = "presence-dot offline";
-            label.textContent = outrousuario + " offline";
+            label.textContent = outro + " offline";
         }
     });
 }
@@ -245,7 +214,6 @@ window.entrarNaSala = function(nome) {
     document.getElementById("room-screen").classList.remove("hidden");
     document.getElementById("user-badge-name").textContent = nome;
 
-    // Mostra botão de compartilhar só para o Kunin
     const btnShare = document.getElementById("btn-share");
     if (nome === "Kunin") {
         btnShare.classList.remove("hidden");
@@ -283,9 +251,7 @@ window.entrarNaSala = function(nome) {
 
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            console.error(`Erro ao entrar em tela cheia: ${err.message}`);
-        });
+        document.documentElement.requestFullscreen().catch(err => console.error(err));
     } else {
         document.exitFullscreen();
     }
@@ -298,35 +264,25 @@ window.mudarTransparencia = function(valor) {
 window.apagarHistorico = async function() {
     if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat. Tem certeza?")) {
         try {
-            const q = query(collection(db, "mensagens"));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(async (documento) => {
-                await deleteDoc(doc(db, "mensagens", documento.id));
-            });
-        } catch(erro) {
-            console.error("Erro ao apagar histórico: ", erro);
-        }
+            const snapshot = await getDocs(query(collection(db, "mensagens")));
+            snapshot.forEach(async (d) => await deleteDoc(doc(db, "mensagens", d.id)));
+        } catch(e) { console.error("Erro ao apagar histórico: ", e); }
     }
 };
 
 /* ─────────────────────────────────────────
-   EDIÇÃO E EXCLUSÃO DE MENSAGENS
+   EDIÇÃO E EXCLUSÃO
 ───────────────────────────────────────── */
 
 window.excluirMensagem = async function(idMsg) {
-    if(confirm("Deseja apagar esta mensagem?")) {
-        await deleteDoc(doc(db, "mensagens", idMsg));
-    }
+    if(confirm("Deseja apagar esta mensagem?")) await deleteDoc(doc(db, "mensagens", idMsg));
 };
 
 window.editarMensagem = async function(idMsg) {
     const textoAtual = document.getElementById(`texto-${idMsg}`).innerText;
     const novoTexto = prompt("Editar mensagem:", textoAtual);
     if (novoTexto !== null && novoTexto.trim() !== "" && novoTexto !== textoAtual) {
-        await updateDoc(doc(db, "mensagens", idMsg), {
-            texto: novoTexto,
-            editado: true
-        });
+        await updateDoc(doc(db, "mensagens", idMsg), { texto: novoTexto, editado: true });
     }
 };
 
@@ -335,9 +291,7 @@ window.editarMensagem = async function(idMsg) {
 ───────────────────────────────────────── */
 
 window.excluirFigurinhaDaGaveta = async function(idFig) {
-    if(confirm("Remover esta figurinha da gaveta?")) {
-        await deleteDoc(doc(db, "gaveta_figurinhas", idFig));
-    }
+    if(confirm("Remover esta figurinha da gaveta?")) await deleteDoc(doc(db, "gaveta_figurinhas", idFig));
 };
 
 function esconderPaineis() {
@@ -371,16 +325,11 @@ window.enviarMensagem = async function() {
     if(texto.trim() === "") return;
     try {
         await addDoc(collection(db, "mensagens"), {
-            tipo: "texto",
-            texto: texto,
-            autor: usuarioAtual,
-            hora: serverTimestamp()
+            tipo: "texto", texto: texto, autor: usuarioAtual, hora: serverTimestamp()
         });
         input.value = "";
         esconderPaineis();
-    } catch (e) {
-        console.error("Erro ao enviar mensagem: ", e);
-    }
+    } catch (e) { console.error("Erro ao enviar mensagem: ", e); }
 };
 
 function carregarGavetaFigurinhas() {
@@ -404,11 +353,8 @@ function carregarGavetaFigurinhas() {
             const btnDel = document.createElement("button");
             btnDel.className = "sticker-del-btn";
             btnDel.title = "Remover";
-            btnDel.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-            btnDel.onclick = function(e) {
-                e.stopPropagation();
-                excluirFigurinhaDaGaveta(idFig);
-            };
+            btnDel.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+            btnDel.onclick = function(e) { e.stopPropagation(); excluirFigurinhaDaGaveta(idFig); };
 
             wrapper.appendChild(imgElement);
             wrapper.appendChild(btnDel);
@@ -421,11 +367,8 @@ window.salvarNovaFigurinha = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     event.target.value = '';
-    const maxTamanho = 800 * 1024;
-    if (file.size > maxTamanho) {
-        alert("Imagem muito grande! Escolha uma de até 800KB.");
-        return;
-    }
+    if (file.size > 800 * 1024) { alert("Imagem muito grande! Escolha uma de até 800KB."); return; }
+
     const grid = document.getElementById("sticker-grid");
     const loadingId = "loading-" + Date.now();
     grid.innerHTML += `<div id="${loadingId}" style="color:rgba(255,255,255,0.4);font-size:12px;width:100%;padding:8px;">Convertendo...</div>`;
@@ -436,11 +379,11 @@ window.salvarNovaFigurinha = async function(event) {
         try {
             await addDoc(collection(db, "gaveta_figurinhas"), { url: base64String, hora: serverTimestamp() });
             enviarFigurinhaSalva(base64String);
-            const loadingEl = document.getElementById(loadingId);
-            if (loadingEl) loadingEl.remove();
+            const el = document.getElementById(loadingId);
+            if (el) el.remove();
         } catch (erro) {
-            const loadingEl = document.getElementById(loadingId);
-            if (loadingEl) loadingEl.innerText = "Erro ao salvar!";
+            const el = document.getElementById(loadingId);
+            if (el) el.innerText = "Erro ao salvar!";
         }
     };
     reader.readAsDataURL(file);
@@ -449,20 +392,29 @@ window.salvarNovaFigurinha = async function(event) {
 window.enviarFigurinhaSalva = async function(base64String) {
     try {
         await addDoc(collection(db, "mensagens"), {
-            tipo: "figurinha",
-            url: base64String,
-            autor: usuarioAtual,
-            hora: serverTimestamp()
+            tipo: "figurinha", url: base64String, autor: usuarioAtual, hora: serverTimestamp()
         });
         esconderPaineis();
-    } catch (erro) {
-        console.error("Erro ao enviar figurinha: ", erro);
-    }
+    } catch (erro) { console.error("Erro ao enviar figurinha: ", erro); }
 };
 
 /* ─────────────────────────────────────────
-   RENDERIZAÇÃO DAS MENSAGENS
+   RENDERIZAÇÃO — últimas 5, opacidade fade
 ───────────────────────────────────────── */
+
+function formatarDataHora(timestamp) {
+    if (!timestamp) return "";
+    const data = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (data.toDateString() === hoje.toDateString()) return `hoje ${hora}`;
+    if (data.toDateString() === ontem.toDateString()) return `ontem ${hora}`;
+    return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
+}
+
+// índice 0 = mais antiga (mais transparente), índice 4 = mais nova (opaca)
+const opacidades = [0.12, 0.28, 0.5, 0.72, 1];
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
@@ -470,13 +422,26 @@ function carregarMensagens() {
         const chatBox = document.getElementById("chat-box");
         chatBox.innerHTML = "";
 
-        snapshot.forEach((documento) => {
-            const mensagem = documento.data();
-            const idMsg = documento.id;
-            const msgElement = document.createElement("div");
+        const todas = [];
+        snapshot.forEach((d) => todas.push({ id: d.id, ...d.data() }));
+        const ultimas = todas.slice(-5);
 
+        ultimas.forEach((mensagem, idx) => {
+            const idMsg = mensagem.id;
             const isOwn = mensagem.autor === usuarioAtual;
+            const opacidade = opacidades[idx];
+
+            // Separador de data/hora
+            const separador = document.createElement("div");
+            separador.className = "msg-separador";
+            separador.textContent = formatarDataHora(mensagem.hora);
+            separador.style.opacity = opacidade * 0.6;
+            chatBox.appendChild(separador);
+
+            // Linha da mensagem
+            const msgElement = document.createElement("div");
             msgElement.className = `message-row ${isOwn ? 'own' : 'other'}`;
+            msgElement.style.opacity = opacidade;
 
             const fotoUrl = avatares[mensagem.autor] || "";
             const avatarHTML = `<img src="${fotoUrl}" class="avatar">`;
@@ -487,22 +452,9 @@ function carregarMensagens() {
 
             if (isOwn) {
                 if (mensagem.tipo === "figurinha") {
-                    botoesAcaoHTML = `
-                        <div class="msg-actions">
-                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        </div>`;
+                    botoesAcaoHTML = `<div class="msg-actions"><button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`;
                 } else {
-                    botoesAcaoHTML = `
-                        <div class="msg-actions">
-                            <button class="btn-action" onclick="editarMensagem('${idMsg}')" title="Editar">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                            <button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        </div>`;
+                    botoesAcaoHTML = `<div class="msg-actions"><button class="btn-action" onclick="editarMensagem('${idMsg}')" title="Editar"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn-action" onclick="excluirMensagem('${idMsg}')" title="Excluir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`;
                 }
             }
 
@@ -511,22 +463,27 @@ function carregarMensagens() {
                 classeExtra = "is-sticker";
             } else {
                 conteudoHTML = `<span id="texto-${idMsg}">${mensagem.texto || ""}</span>`;
-                if (mensagem.editado) {
-                    conteudoHTML += ` <span style="font-size:10px;color:rgba(255,255,255,0.45);font-style:italic;">(editado)</span>`;
-                }
+                if (mensagem.editado) conteudoHTML += ` <span class="msg-editado">(editado)</span>`;
             }
 
+            // Nome acima do balão (só para quem recebe, estilo WhatsApp)
+            const nomeHTML = (!isOwn && mensagem.tipo !== "figurinha")
+                ? `<div class="message-author-above">${mensagem.autor}</div>`
+                : "";
+
             const bubbleHTML = `
-                <div class="message-bubble ${classeExtra}">
-                    ${botoesAcaoHTML}
-                    ${!isOwn && mensagem.tipo !== "figurinha" ? `<span class="message-author">${mensagem.autor}</span>` : ''}
-                    ${conteudoHTML}
-                </div>
-            `;
+                <div class="msg-col ${isOwn ? 'col-own' : 'col-other'}">
+                    ${nomeHTML}
+                    <div class="message-bubble ${classeExtra}">
+                        ${botoesAcaoHTML}
+                        ${conteudoHTML}
+                    </div>
+                </div>`;
 
             msgElement.innerHTML = isOwn ? bubbleHTML + avatarHTML : avatarHTML + bubbleHTML;
             chatBox.appendChild(msgElement);
         });
+
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
