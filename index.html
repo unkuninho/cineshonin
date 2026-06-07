@@ -452,6 +452,7 @@
                     <button class="btn-top" onclick="editarPerfil()" title="Editar Perfil">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2L12 4.5M10.5 1.5a2.12 2.12 0 013 3L4 14H1v-3L10.5 1.5z"/></svg>
                     </button>
+                    <input type="file" id="profile-upload" accept="image/png,image/jpeg,image/gif,image/webp" class="hidden" onchange="salvarNovaFotoPerfil(event)">
 
                     <div id="presence-badge">
                         <span class="presence-dot offline" id="presence-dot"></span>

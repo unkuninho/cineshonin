@@ -226,7 +226,7 @@ window.entrarNaSala = function(nome) {
 };
 
 /* ─────────────────────────────────────────
-   EDIÇÃO DINÂMICA DE PERFIL
+   EDIÇÃO DINÂMICA DE PERFIL (Link ou Upload)
 ───────────────────────────────────────── */
 
 function atualizarBadgeUsuario() {
@@ -234,22 +234,54 @@ function atualizarBadgeUsuario() {
     document.getElementById("badge-avatar").src = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
 }
 
+let nomeTemporarioUpload = "";
+
 window.editarPerfil = function() {
     const novoNome = prompt("Como você quer ser chamado(a)?", usuarioAtual);
     if (!novoNome || novoNome.trim() === "") return;
     
-    const novaFoto = prompt("Cole o link (URL) da sua nova foto de perfil:", avatares[usuarioAtual] || "");
-    if (!novaFoto || novaFoto.trim() === "") return;
+    const querUsarLink = confirm("Clique em [OK] para colar um LINK de imagem da internet.\nOu clique em [CANCELAR] para escolher uma FOTO DO SEU PC.");
+    
+    if (querUsarLink) {
+        const novaFoto = prompt("Cole o link (URL) da sua nova foto de perfil:", avatares[usuarioAtual] || "");
+        if (novaFoto && novaFoto.trim() !== "") {
+            aplicarNovoPerfil(novoNome.trim(), novaFoto.trim());
+        }
+    } else {
+        nomeTemporarioUpload = novoNome.trim();
+        document.getElementById("profile-upload").click();
+    }
+};
 
+window.salvarNovaFotoPerfil = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    event.target.value = '';
+    
+    if (file.size > 800 * 1024) { 
+        alert("Imagem muito grande! Escolha uma foto de até 800KB."); 
+        return; 
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = function() {
+        const base64String = reader.result;
+        aplicarNovoPerfil(nomeTemporarioUpload, base64String);
+    };
+    reader.readAsDataURL(file);
+};
+
+function aplicarNovoPerfil(novoNome, novaFoto) {
     setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() });
 
-    usuarioAtual = novoNome.trim();
-    avatares[usuarioAtual] = novaFoto.trim();
+    usuarioAtual = novoNome;
+    avatares[usuarioAtual] = novaFoto;
 
     atualizarBadgeUsuario();
     marcarPresenca(usuarioAtual, true);
     carregarMensagens();
-};
+}
 
 /* ─────────────────────────────────────────
    TELA CHEIA E INTERFACE
