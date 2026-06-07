@@ -150,7 +150,6 @@ function ouvirPresenca() {
 window.entrarNaSala = function(nome) {
     usuarioAtual = nome;
     
-    // Pede permissão para notificações assim que entrar na sala
     if ("Notification" in window && Notification.permission !== "granted") {
         Notification.requestPermission();
     }
@@ -254,6 +253,22 @@ function aplicarNovoPerfil(novoNome, novaFoto) {
     usuarioAtual = novoNome; avatares[usuarioAtual] = novaFoto;
     atualizarBadgeUsuario(); marcarPresenca(usuarioAtual, true); carregarMensagens();
 }
+
+/* ─────────────────────────────────────────
+   COMPARTILHAMENTO NO X (TWITTER)
+───────────────────────────────────────── */
+window.compartilharNoX = function() {
+    const assistido = prompt("O que você estava assistindo?");
+    if (!assistido || assistido.trim() === "") return;
+
+    const nota = prompt("Qual nota você dá de 0 a 10?");
+    if (!nota || nota.trim() === "") return;
+
+    const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
+    const url = `https://x.com/compose/post?text=${encodeURIComponent(texto)}`;
+    
+    window.open(url, '_blank');
+};
 
 /* ─────────────────────────────────────────
    TELA CHEIA E ARRASTE DO CHAT
@@ -407,7 +422,6 @@ function formatarDataHora(timestamp) {
     return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
 }
 
-// Opacidade fixada em 100% (1) para as 5 mensagens, deixando-as totalmente visíveis!
 const opacidades = [1, 1, 1, 1, 1]; 
 
 let isInitialLoad = true;
@@ -416,12 +430,10 @@ function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
     onSnapshot(q, (snapshot) => {
         
-        // Disparo das Notificações (Só faz se não for o carregamento inicial da página)
         if (!isInitialLoad) {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === "added") {
                     const msg = change.doc.data();
-                    // Se a mensagem não for minha E eu estiver fora da aba
                     if (msg.autor !== usuarioAtual && document.hidden) {
                         if (Notification.permission === "granted") {
                             const notifText = msg.tipo === 'figurinha' ? '🖼️ Nova figurinha' : msg.texto;
