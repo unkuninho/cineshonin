@@ -14,13 +14,14 @@ const db = getFirestore(app);
 
 let usuarioAtual = "";
 
+// O objeto de avatares agora é dinâmico e pode ser alterado durante o uso
 const avatares = {
     "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
     "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
 };
 
 /* ─────────────────────────────────────────
-   WebRTC
+   WebRTC (Transmissão de Vídeo)
 ───────────────────────────────────────── */
 
 const rtcConfig = {
@@ -35,7 +36,6 @@ function refChamada()          { return doc(db, "chamada", SALA_ID); }
 function refOfferCandidates()  { return collection(db, "chamada", SALA_ID, "offerCandidates"); }
 function refAnswerCandidates() { return collection(db, "chamada", SALA_ID, "answerCandidates"); }
 
-/* Kunin: inicia transmissão */
 window.iniciarCompartilhamento = async function() {
     const btnShare = document.getElementById("btn-share");
 
@@ -59,8 +59,6 @@ window.iniciarCompartilhamento = async function() {
     const videoLocal = document.getElementById("local-preview");
     videoLocal.srcObject = localStream;
     videoLocal.classList.remove("hidden");
-
-    document.getElementById("btn-toggle-preview").classList.remove("hidden");
 
     btnShare.classList.add("transmitindo");
     btnShare.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg> Parar transmissão`;
@@ -106,8 +104,6 @@ function pararTransmissao() {
     videoLocal.srcObject = null;
     videoLocal.classList.add("hidden");
 
-    document.getElementById("btn-toggle-preview").classList.add("hidden");
-
     const screenVideo = document.getElementById("screen-video");
     screenVideo.srcObject = null;
     screenVideo.classList.add("hidden");
@@ -120,18 +116,6 @@ function pararTransmissao() {
     setDoc(refChamada(), { offer: null, answer: null });
 }
 
-/* Toggle do preview local */
-window.togglePreview = function() {
-    const preview = document.getElementById("local-preview");
-    const btn = document.getElementById("btn-toggle-preview");
-    const hidden = preview.classList.toggle("hidden");
-    btn.title = hidden ? "Mostrar preview" : "Esconder preview";
-    btn.innerHTML = hidden
-        ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 7s2.5-4.5 6-4.5S13 7 13 7s-2.5 4.5-6 4.5S1 7 1 7z"/><circle cx="7" cy="7" r="1.8"/><line x1="2" y1="2" x2="12" y2="12"/></svg>`
-        : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 7s2.5-4.5 6-4.5S13 7 13 7s-2.5 4.5-6 4.5S1 7 1 7z"/><circle cx="7" cy="7" r="1.8"/></svg>`;
-};
-
-/* Shirlei: espectadora */
 async function entrarComoEspectadora() {
     onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
@@ -177,7 +161,7 @@ async function entrarComoEspectadora() {
 }
 
 /* ─────────────────────────────────────────
-   PRESENÇA
+   PRESENÇA & INTERFACE DA SALA
 ───────────────────────────────────────── */
 
 async function marcarPresenca(nome, online) {
@@ -188,6 +172,7 @@ async function marcarPresenca(nome, online) {
 }
 
 function ouvirPresenca() {
+    // Escuta a presença baseada no nome "oposto" da configuração padrão, ou pode ser aprimorado futuramente
     const outro = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
     onSnapshot(doc(db, "presenca", outro), (snap) => {
         const dados = snap.data();
@@ -204,15 +189,12 @@ function ouvirPresenca() {
     });
 }
 
-/* ─────────────────────────────────────────
-   ENTRADA NA SALA
-───────────────────────────────────────── */
-
 window.entrarNaSala = function(nome) {
     usuarioAtual = nome;
     document.getElementById("login-screen").classList.add("hidden");
     document.getElementById("room-screen").classList.remove("hidden");
-    document.getElementById("user-badge-name").textContent = nome;
+    
+    atualizarBadgeUsuario();
 
     const btnShare = document.getElementById("btn-share");
     if (nome === "Kunin") {
@@ -225,12 +207,12 @@ window.entrarNaSala = function(nome) {
     marcarPresenca(nome, true);
 
     window.addEventListener("beforeunload", () => {
-        marcarPresenca(nome, false);
-        if (nome === "Kunin") pararTransmissao();
+        marcarPresenca(usuarioAtual, false);
+        if (usuarioAtual === "Kunin") pararTransmissao();
     });
 
     document.addEventListener("visibilitychange", () => {
-        marcarPresenca(nome, !document.hidden);
+        marcarPresenca(usuarioAtual, !document.hidden);
     });
 
     ouvirPresenca();
@@ -246,7 +228,38 @@ window.entrarNaSala = function(nome) {
 };
 
 /* ─────────────────────────────────────────
-   TELA CHEIA E TRANSPARÊNCIA
+   EDIÇÃO DINÂMICA DE PERFIL (Nome e Foto)
+───────────────────────────────────────── */
+
+function atualizarBadgeUsuario() {
+    document.getElementById("user-badge-name").textContent = usuarioAtual;
+    document.getElementById("badge-avatar").src = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
+}
+
+window.editarPerfil = function() {
+    const novoNome = prompt("Como você quer ser chamado(a)?", usuarioAtual);
+    if (!novoNome || novoNome.trim() === "") return;
+    
+    const novaFoto = prompt("Cole o link (URL) da sua nova foto de perfil:", avatares[usuarioAtual] || "");
+    if (!novaFoto || novaFoto.trim() === "") return;
+
+    // Desmarca presença do nome antigo antes de trocar
+    setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() });
+
+    // Atualiza dados
+    usuarioAtual = novoNome.trim();
+    avatares[usuarioAtual] = novaFoto.trim();
+
+    // Reflete as mudanças
+    atualizarBadgeUsuario();
+    marcarPresenca(usuarioAtual, true);
+    
+    // Recarrega o chat para as fotos atualizarem (opcional, mas bom pra consistência)
+    carregarMensagens();
+};
+
+/* ─────────────────────────────────────────
+   TELA CHEIA, TRANSPARÊNCIA E PAINEL ESQUERDO
 ───────────────────────────────────────── */
 
 window.toggleFullScreen = function() {
@@ -261,6 +274,11 @@ window.mudarTransparencia = function(valor) {
     document.documentElement.style.setProperty('--bg-alpha', valor);
 };
 
+window.toggleLeftPanel = function() {
+    const panel = document.getElementById("left-panel-wrapper");
+    panel.classList.toggle("minimized");
+};
+
 window.apagarHistorico = async function() {
     if(confirm("ATENÇÃO: Isso vai apagar TODAS as mensagens do chat. Tem certeza?")) {
         try {
@@ -270,9 +288,6 @@ window.apagarHistorico = async function() {
     }
 };
 
-/* ─────────────────────────────────────────
-   DETECTOR DE TELA CHEIA
-───────────────────────────────────────── */
 document.addEventListener("fullscreenchange", () => {
     const chatBox = document.getElementById("chat-box");
     if (document.fullscreenElement) {
@@ -285,7 +300,7 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 /* ─────────────────────────────────────────
-   EDIÇÃO E EXCLUSÃO
+   MENSAGENS, FIGURINHAS E EDIÇÕES
 ───────────────────────────────────────── */
 
 window.excluirMensagem = async function(idMsg) {
@@ -299,10 +314,6 @@ window.editarMensagem = async function(idMsg) {
         await updateDoc(doc(db, "mensagens", idMsg), { texto: novoTexto, editado: true });
     }
 };
-
-/* ─────────────────────────────────────────
-   FIGURINHAS
-───────────────────────────────────────── */
 
 window.excluirFigurinhaDaGaveta = async function(idFig) {
     if(confirm("Remover esta figurinha da gaveta?")) await deleteDoc(doc(db, "gaveta_figurinhas", idFig));
@@ -328,10 +339,6 @@ document.getElementById("emoji-picker").addEventListener('emoji-click', event =>
     input.value += event.detail.unicode;
     input.focus();
 });
-
-/* ─────────────────────────────────────────
-   MENSAGENS
-───────────────────────────────────────── */
 
 window.enviarMensagem = async function() {
     const input = document.getElementById("message-input");
@@ -413,7 +420,7 @@ window.enviarFigurinhaSalva = async function(base64String) {
 };
 
 /* ─────────────────────────────────────────
-   RENDERIZAÇÃO — últimas 5, opacidade fade
+   RENDERIZAÇÃO DO CHAT
 ───────────────────────────────────────── */
 
 function formatarDataHora(timestamp) {
@@ -454,7 +461,8 @@ function carregarMensagens() {
             msgElement.className = `message-row ${isOwn ? 'own' : 'other'}`;
             msgElement.style.opacity = opacidade;
 
-            const fotoUrl = avatares[mensagem.autor] || "";
+            // Busca a foto no dicionário atualizado de avatares
+            const fotoUrl = avatares[mensagem.autor] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
             const avatarHTML = `<img src="${fotoUrl}" class="avatar">`;
 
             let conteudoHTML = "";
@@ -502,11 +510,11 @@ function carregarMensagens() {
    FUNDO ANIMADO DO LOGIN
 ───────────────────────────────────────── */
 const fotosDeFundo = [
-    "LINK_DIRETO_DA_SUA_FOTO_1.jpg",
-    "LINK_DIRETO_DA_SUA_FOTO_2.jpg",
-    "LINK_DIRETO_DA_SUA_FOTO_3.jpg",
-    "LINK_DIRETO_DA_SUA_FOTO_4.jpg",
-    "LINK_DIRETO_DA_SUA_FOTO_5.jpg"
+    "https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczNm-4vUYJvI93aikfdouiDN-gxmI-aF0wyGf1XfvwKnNOqkiAdZca1MlHTK_k8EiYd9coqrlB_ssp0jiTHhpXXKA94NzIGf8gvK54weLB6KEhhWcS35ZNAUtbB_IEnoGCd_yLT__hi0kd-MYo_2W5cS=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczPZEbb1VJvfwOQxrX052UbCRWAg_u3PTQa2BOBFONhGzGLJlQe8bw30ZG0ouw0pIDO60YME1fIvbGP6mbLCAm3sKprEenj-132uqdXspCa6bzK-61QMmGGw3bxT91ybaTvLGcUkpuUBi_ZkUj9PDIVD=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczOAn5RfTwpDO2J8x_ArQrRWO3iR9EEXfUgkCY0vL7DhXRqpUj0aDSsOgFaH1rIsbOgBO5Geg5_IVgCL07gQ5NxGgrJydfn2eKd9gJHZfhM7LAXDCcKpLWgeNWxTDrt7TJZYaR-v57yzf_QjA2HqsdmP=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczN8LSIJRG_WyVIuVsZJwYoO2zraP9LAmkKB-zjjpjxV-7pVmxfeutQeuYkPytiyDm8UNK2BfRRJGTB8Pux3TgHoXeRF82xbcp7fgu4z-xctXtUxuCAo1aserBl01dRYzoN_6mtlBQQVhJaBS2tRy607=w683-h911-s-no-gm?authuser=0"
 ];
 
 let indexFotoFundo = 0;
@@ -519,7 +527,7 @@ function rotacionarFundo() {
     }
 }
 
-if(fotosDeFundo[0]) {
+if(fotosDeFundo.length > 0) {
     rotacionarFundo();
     setInterval(rotacionarFundo, 6000); 
 }
