@@ -21,7 +21,7 @@
         .hidden { display: none !important; }
 
         /* ══════════════════════════════
-           LOGIN — tela maior com Slideshow
+           LOGIN E CARROSSEL INFINITO
         ══════════════════════════════ */
         #login-screen {
             display: flex;
@@ -31,9 +31,31 @@
             height: 100vh;
             position: relative;
             background-color: #0b0c10;
-            transition: background-image 1.5s ease-in-out;
-            background-size: cover;
-            background-position: center;
+        }
+
+        .slider-wrapper {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .slider-track {
+            display: flex;
+            height: 100%;
+            width: max-content;
+            animation: slide 40s linear infinite;
+        }
+
+        .slider-track img {
+            height: 100%;
+            width: auto;
+            object-fit: cover;
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); } 
         }
 
         #login-screen::before {
@@ -148,7 +170,6 @@
         }
 
         #left-panel-wrapper.minimized {
-            /* Esconde o painel, deixa só a aba do botão visível */
             transform: translateX(calc(-100% + 24px)); 
         }
 
@@ -167,7 +188,6 @@
             min-width: 320px;
         }
 
-        /* Botão para minimizar/maximizar */
         #btn-toggle-left-panel {
             width: 24px;
             height: 48px;
@@ -191,7 +211,6 @@
         #btn-toggle-left-panel svg { transition: transform 0.3s; }
         #left-panel-wrapper.minimized #btn-toggle-left-panel svg { transform: rotate(180deg); }
 
-        /* Controles Superiores (dentro do painel esquerdo) */
         .top-controls {
             display: flex;
             align-items: center;
@@ -208,12 +227,8 @@
             padding: 4px 10px 4px 4px;
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.08);
-            margin-right: auto;
-            cursor: pointer;
             transition: 0.2s;
         }
-
-        #user-badge:hover { background: rgba(255,255,255,0.15); }
 
         #badge-avatar {
             width: 20px; height: 20px;
@@ -223,6 +238,7 @@
         #presence-badge {
             display: flex; align-items: center; gap: 5px;
             font-size: 11px; color: rgba(255,255,255,0.4);
+            margin-right: auto;
         }
 
         .presence-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background 0.4s; }
@@ -251,7 +267,6 @@
         #transparency-slider { width: 56px; cursor: pointer; -webkit-appearance: none; height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px; }
         #transparency-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #5865F2; }
 
-        /* Preview Local */
         #local-preview {
             width: 100%; height: 160px;
             object-fit: contain;
@@ -260,7 +275,6 @@
             background: #111;
         }
 
-        /* Botão Share (Transmitir) */
         .btn-share {
             display: flex; align-items: center; justify-content: center; gap: 7px;
             background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
@@ -293,7 +307,6 @@
             transition: background 0.1s ease;
         }
 
-        /* ── CHAT ── */
         #chat-box {
             display: flex; flex-direction: column; gap: 2px;
             padding: 4px 0; max-height: 45vh; overflow-y: auto;
@@ -395,8 +408,11 @@
 </head>
 <body>
 
-    <!-- LOGIN -->
     <div id="login-screen">
+        <div class="slider-wrapper">
+            <div class="slider-track" id="slider-track"></div>
+        </div>
+
         <h1 class="login-title">Nosso Espaço</h1>
         <p class="login-subtitle">quem é você hoje?</p>
         <div class="login-cards">
@@ -413,7 +429,6 @@
         </div>
     </div>
 
-    <!-- ROOM -->
     <div id="room-screen" class="hidden">
         <div id="video-container">
             <video id="screen-video" autoplay playsinline class="hidden"></video>
@@ -426,15 +441,17 @@
             </div>
         </div>
 
-        <!-- PAINEL ESQUERDO (Controles e Preview) -->
         <div id="left-panel-wrapper">
             <div id="left-panel-content">
                 <div class="top-controls">
-                    <!-- Badge do Usuário (Agora é um botão de edição) -->
-                    <span id="user-badge" onclick="editarPerfil()" title="Editar Perfil">
+                    <span id="user-badge">
                         <img id="badge-avatar" src="" alt="Avatar">
                         <span id="user-badge-name">—</span>
                     </span>
+
+                    <button class="btn-top" onclick="editarPerfil()" title="Editar Perfil">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2L12 4.5M10.5 1.5a2.12 2.12 0 013 3L4 14H1v-3L10.5 1.5z"/></svg>
+                    </button>
 
                     <div id="presence-badge">
                         <span class="presence-dot offline" id="presence-dot"></span>
@@ -470,7 +487,6 @@
             </button>
         </div>
 
-        <!-- PAINEL DIREITO (Apenas Chat e Input) -->
         <div id="overlay-panel">
             <div id="chat-box"></div>
 

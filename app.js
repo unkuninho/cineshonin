@@ -14,7 +14,6 @@ const db = getFirestore(app);
 
 let usuarioAtual = "";
 
-// O objeto de avatares agora é dinâmico e pode ser alterado durante o uso
 const avatares = {
     "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
     "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
@@ -172,7 +171,6 @@ async function marcarPresenca(nome, online) {
 }
 
 function ouvirPresenca() {
-    // Escuta a presença baseada no nome "oposto" da configuração padrão, ou pode ser aprimorado futuramente
     const outro = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
     onSnapshot(doc(db, "presenca", outro), (snap) => {
         const dados = snap.data();
@@ -228,7 +226,7 @@ window.entrarNaSala = function(nome) {
 };
 
 /* ─────────────────────────────────────────
-   EDIÇÃO DINÂMICA DE PERFIL (Nome e Foto)
+   EDIÇÃO DINÂMICA DE PERFIL
 ───────────────────────────────────────── */
 
 function atualizarBadgeUsuario() {
@@ -243,23 +241,18 @@ window.editarPerfil = function() {
     const novaFoto = prompt("Cole o link (URL) da sua nova foto de perfil:", avatares[usuarioAtual] || "");
     if (!novaFoto || novaFoto.trim() === "") return;
 
-    // Desmarca presença do nome antigo antes de trocar
     setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() });
 
-    // Atualiza dados
     usuarioAtual = novoNome.trim();
     avatares[usuarioAtual] = novaFoto.trim();
 
-    // Reflete as mudanças
     atualizarBadgeUsuario();
     marcarPresenca(usuarioAtual, true);
-    
-    // Recarrega o chat para as fotos atualizarem (opcional, mas bom pra consistência)
     carregarMensagens();
 };
 
 /* ─────────────────────────────────────────
-   TELA CHEIA, TRANSPARÊNCIA E PAINEL ESQUERDO
+   TELA CHEIA E INTERFACE
 ───────────────────────────────────────── */
 
 window.toggleFullScreen = function() {
@@ -300,7 +293,7 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 /* ─────────────────────────────────────────
-   MENSAGENS, FIGURINHAS E EDIÇÕES
+   MENSAGENS E FIGURINHAS
 ───────────────────────────────────────── */
 
 window.excluirMensagem = async function(idMsg) {
@@ -461,7 +454,6 @@ function carregarMensagens() {
             msgElement.className = `message-row ${isOwn ? 'own' : 'other'}`;
             msgElement.style.opacity = opacidade;
 
-            // Busca a foto no dicionário atualizado de avatares
             const fotoUrl = avatares[mensagem.autor] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
             const avatarHTML = `<img src="${fotoUrl}" class="avatar">`;
 
@@ -507,7 +499,7 @@ function carregarMensagens() {
 }
 
 /* ─────────────────────────────────────────
-   FUNDO ANIMADO DO LOGIN
+   FUNDO ANIMADO INFINITO (SLIDER LADO A LADO)
 ───────────────────────────────────────── */
 const fotosDeFundo = [
     "https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0",
@@ -517,17 +509,12 @@ const fotosDeFundo = [
     "https://lh3.googleusercontent.com/pw/AP1GczN8LSIJRG_WyVIuVsZJwYoO2zraP9LAmkKB-zjjpjxV-7pVmxfeutQeuYkPytiyDm8UNK2BfRRJGTB8Pux3TgHoXeRF82xbcp7fgu4z-xctXtUxuCAo1aserBl01dRYzoN_6mtlBQQVhJaBS2tRy607=w683-h911-s-no-gm?authuser=0"
 ];
 
-let indexFotoFundo = 0;
-
-function rotacionarFundo() {
-    const loginScreen = document.getElementById("login-screen");
-    if (loginScreen && !loginScreen.classList.contains("hidden")) {
-        loginScreen.style.backgroundImage = `url('${fotosDeFundo[indexFotoFundo]}')`;
-        indexFotoFundo = (indexFotoFundo + 1) % fotosDeFundo.length;
+function inicializarSliderFundo() {
+    const track = document.getElementById("slider-track");
+    if (track && fotosDeFundo.length > 0) {
+        let imagensHtml = fotosDeFundo.map(url => `<img src="${url}" alt="Fundo">`).join('');
+        track.innerHTML = imagensHtml + imagensHtml;
     }
 }
 
-if(fotosDeFundo.length > 0) {
-    rotacionarFundo();
-    setInterval(rotacionarFundo, 6000); 
-}
+inicializarSliderFundo();
