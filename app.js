@@ -434,7 +434,7 @@ function formatarDataHora(timestamp) {
     return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
 }
 
-const opacidades = [0.12, 0.28, 0.5, 0.72, 1];
+const opacidades = [0.5, 0.65, 0.8, 0.95, 1];
 
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora"));
