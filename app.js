@@ -212,7 +212,6 @@ window.entrarNaSala = function(nome) {
     document.addEventListener("visibilitychange", () => { 
         const isVisible = !document.hidden;
         marcarPresenca(usuarioAtual, isVisible); 
-        // O Vilão das Leituras foi removido daqui! Nada de baixar mensagens ao trocar de aba.
     });
 
     ouvirPresenca(); carregarMensagens(); carregarGavetaFigurinhas();
@@ -288,18 +287,135 @@ function aplicarNovoPerfil(novoNome, novaFoto) {
 }
 
 /* ─────────────────────────────────────────
-   COMPARTILHAMENTO NO X (TWITTER)
+   COMPARTILHAMENTO NO X (TWITTER) E TMDB
 ───────────────────────────────────────── */
+const TMDB_API_KEY = "72c510d429567c89261f7a37b8ef9a0b";
+let debounceTimer;
+let selectedTMDBMedia = null;
+
 window.compartilharNoX = function() {
-    const assistido = prompt("O que você estava assistindo?");
-    if (!assistido || assistido.trim() === "") return;
+    document.getElementById("modal-tmdb").classList.remove("hidden");
+    limparSelecaoTMDB();
+};
 
-    const nota = prompt("Qual nota você dá de 0 a 10?");
-    if (!nota || nota.trim() === "") return;
+window.fecharModalTMDB = function() {
+    document.getElementById("modal-tmdb").classList.add("hidden");
+};
 
-    const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`;
+// Quando você digita no campo, ele espera 400ms para evitar travar a API e então busca
+document.getElementById("tmdb-search-input").addEventListener("input", (e) => {
+    clearTimeout(debounceTimer);
+    const query = e.target.value.trim();
+    const resultsBox = document.getElementById("tmdb-search-results");
+    
+    if (query.length < 2) {
+        resultsBox.classList.add("hidden");
+        return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            mostrarResultadosTMDB(data.results);
+        } catch (err) { console.error("Erro ao buscar no TMDB:", err); }
+    }, 400);
+});
+
+function mostrarResultadosTMDB(results) {
+    const resultsBox = document.getElementById("tmdb-search-results");
+    resultsBox.innerHTML = "";
+    
+    // Filtra apenas filmes e séries, pegando os 5 melhores resultados
+    const validos = results.filter(r => r.media_type === 'movie' || r.media_type === 'tv').slice(0, 5);
+    
+    if (validos.length === 0) {
+        resultsBox.innerHTML = `<div style="padding:10px; font-size:12px; color:rgba(255,255,255,0.4); text-align:center;">Nenhum resultado encontrado.</div>`;
+        resultsBox.classList.remove("hidden");
+        return;
+    }
+
+    validos.forEach(item => {
+        const titulo = item.title || item.name;
+        const dataRaw = item.release_date || item.first_air_date || "";
+        const ano = dataRaw ? dataRaw.substring(0, 4) : "N/A";
+        // Pega a versão mais leve possível da capa (w92)
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : "https://via.placeholder.com/32x48/111/fff?text=Sem+Capa";
+        const tipo = item.media_type === 'movie' ? '🎬 Filme' : '📺 Série';
+
+        const div = document.createElement("div");
+        div.className = "tmdb-result-item";
+        div.innerHTML = `
+            <img src="${poster}" class="tmdb-result-poster">
+            <div class="tmdb-result-text">
+                <strong>${titulo}</strong>
+                <span class="tmdb-result-year">${tipo} • ${ano}</span>
+            </div>
+        `;
+        div.onclick = () => selecionarTMDB(item, titulo, poster);
+        resultsBox.appendChild(div);
+    });
+    resultsBox.classList.remove("hidden");
+}
+
+window.selecionarTMDB = function(item, titulo, poster) {
+    selectedTMDBMedia = item;
+    document.getElementById("tmdb-search-results").classList.add("hidden");
+    document.querySelector(".tmdb-search-box").classList.add("hidden");
+    
+    document.getElementById("tmdb-selected").classList.remove("hidden");
+    document.getElementById("tmdb-selected-poster").src = poster;
+    document.getElementById("tmdb-selected-title").textContent = titulo;
+    
+    // Se for Série, exibe os campos de temporada e episódio. Se não, esconde.
+    if (item.media_type === 'tv') {
+        document.getElementById("tmdb-tv-inputs").classList.remove("hidden");
+    } else {
+        document.getElementById("tmdb-tv-inputs").classList.add("hidden");
+    }
+    
+    document.getElementById("btn-enviar-tweet").disabled = false;
+    document.getElementById("tmdb-rating").focus();
+};
+
+window.limparSelecaoTMDB = function() {
+    selectedTMDBMedia = null;
+    document.getElementById("tmdb-selected").classList.add("hidden");
+    document.querySelector(".tmdb-search-box").classList.remove("hidden");
+    document.getElementById("tmdb-search-input").value = "";
+    document.getElementById("tmdb-search-input").focus();
+    document.getElementById("tmdb-season").value = "";
+    document.getElementById("tmdb-episode").value = "";
+    document.getElementById("tmdb-rating").value = "";
+    document.getElementById("btn-enviar-tweet").disabled = true;
+};
+
+window.enviarTweetTMDB = function() {
+    if (!selectedTMDBMedia) return;
+    
+    const titulo = selectedTMDBMedia.title || selectedTMDBMedia.name;
+    const isTv = selectedTMDBMedia.media_type === 'tv';
+    
+    let textoAdd = "";
+    if (isTv) {
+        const temp = document.getElementById("tmdb-season").value;
+        const ep = document.getElementById("tmdb-episode").value;
+        if (temp || ep) {
+            let partes = [];
+            if (temp) partes.push(`Temporada ${temp}`);
+            if (ep) partes.push(`Episódio ${ep}`);
+            textoAdd = ` (${partes.join(", ")})`;
+        }
+    }
+
+    let nota = document.getElementById("tmdb-rating").value;
+    if (!nota || nota.trim() === "") nota = "?";
+
+    const textoFinal = `Estava assistindo ${titulo}${textoAdd} e dou a nota ${nota}/10`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(textoFinal)}`;
+    
     window.open(url, '_blank');
+    fecharModalTMDB();
 };
 
 /* ─────────────────────────────────────────
@@ -407,7 +523,6 @@ window.enviarFigurinhaSalva = async function(base64String) {
     } catch (erro) { console.error("Erro ao enviar figurinha: ", erro); }
 };
 
-/* OTIMIZADO: LIMITANDO O CARREGAMENTO A 30 FIGURINHAS RECENTES */
 function carregarGavetaFigurinhas() {
     const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora", "desc"), limit(30));
     onSnapshot(q, (snapshot) => {
@@ -445,7 +560,7 @@ window.salvarNovaFigurinha = async function(event) {
 };
 
 /* ─────────────────────────────────────────
-   RENDERIZAÇÃO DO CHAT E NOTIFICAÇÕES (OTIMIZADO)
+   RENDERIZAÇÃO DO CHAT E NOTIFICAÇÕES
 ───────────────────────────────────────── */
 function formatarDataHora(timestamp) {
     if (!timestamp) return "";
@@ -459,7 +574,6 @@ function formatarDataHora(timestamp) {
 
 let isInitialLoad = true;
 
-/* OTIMIZADO: LIMITANDO O CARREGAMENTO AS 50 MENSAGENS RECENTES */
 function carregarMensagens() {
     const q = query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50));
     onSnapshot(q, (snapshot) => {
@@ -484,8 +598,6 @@ function carregarMensagens() {
         const chatBox = document.getElementById("chat-box"); chatBox.innerHTML = "";
         const todas = []; 
         snapshot.forEach((d) => todas.push({ id: d.id, ...d.data() }));
-        
-        // Inverte a ordem das mensagens para que as mais recentes fiquem por último no chat
         todas.reverse();
 
         todas.forEach((mensagem) => {
