@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, updateDoc, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, deleteDoc, updateDoc, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4ng6qnK6dZ4U2WKcxu5bEaBJRhVnw0YM",
@@ -57,15 +57,6 @@ window.iniciarCompartilhamento = async function() {
     oldAnswers.forEach(d => deleteDoc(d.ref));
 
     peerConnection = new RTCPeerConnection(rtcConfig);
-    
-    // Auto-limpeza se a internet oscilar e a conexão morrer
-    peerConnection.oniceconnectionstatechange = () => {
-        if (peerConnection.iceConnectionState === "disconnected" || peerConnection.iceConnectionState === "failed") {
-            console.log("Conexão de vídeo caiu. Limpando...");
-            pararTransmissao();
-        }
-    };
-
     let answerCandidatesQueue = []; 
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -83,7 +74,6 @@ window.iniciarCompartilhamento = async function() {
         const dados = snap.data();
         if (!peerConnection) return;
         
-        // A trava !peerConnection.currentRemoteDescription impede que a resposta seja lida duas vezes
         if (dados?.answer && !peerConnection.currentRemoteDescription && peerConnection.signalingState === "have-local-offer") { 
             try {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
@@ -143,21 +133,6 @@ async function entrarComoEspectadora() {
         if (peerConnection) return;
         
         peerConnection = new RTCPeerConnection(rtcConfig);
-        
-        // Auto-limpeza se a tela do Kunin sumir do nada
-        peerConnection.oniceconnectionstatechange = () => {
-            if (peerConnection.iceConnectionState === "disconnected" || peerConnection.iceConnectionState === "failed") {
-                console.log("Conexão com a transmissão caiu.");
-                if (peerConnection) {
-                    peerConnection.close();
-                    peerConnection = null;
-                }
-                document.getElementById("screen-video").srcObject = null;
-                document.getElementById("screen-video").classList.add("hidden");
-                document.getElementById("sem-transmissao").classList.remove("hidden");
-            }
-        };
-
         let offerCandidatesQueue = []; 
 
         peerConnection.ontrack = (event) => {
@@ -237,17 +212,7 @@ window.entrarNaSala = function(nome) {
     document.addEventListener("visibilitychange", () => { 
         const isVisible = !document.hidden;
         marcarPresenca(usuarioAtual, isVisible); 
-        
-        if(isVisible) {
-            getDocs(query(collection(db, "mensagens"))).then(snap => {
-                snap.forEach(d => {
-                    let m = d.data();
-                    if (m.autor !== usuarioAtual && !m.lida) {
-                        updateDoc(doc(db, "mensagens", d.id), { lida: true });
-                    }
-                });
-            });
-        }
+        // O Vilão das Leituras foi removido daqui! Nada de baixar mensagens ao trocar de aba.
     });
 
     ouvirPresenca(); carregarMensagens(); carregarGavetaFigurinhas();
@@ -333,9 +298,7 @@ window.compartilharNoX = function() {
     if (!nota || nota.trim() === "") return;
 
     const texto = `Estava assistindo ${assistido.trim()} e dou a nota ${nota.trim()}/10`;
-    
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`;
-    
     window.open(url, '_blank');
 };
 
@@ -444,18 +407,21 @@ window.enviarFigurinhaSalva = async function(base64String) {
     } catch (erro) { console.error("Erro ao enviar figurinha: ", erro); }
 };
 
+/* OTIMIZADO: LIMITANDO O CARREGAMENTO A 30 FIGURINHAS RECENTES */
 function carregarGavetaFigurinhas() {
-    const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora"));
+    const q = query(collection(db, "gaveta_figurinhas"), orderBy("hora", "desc"), limit(30));
     onSnapshot(q, (snapshot) => {
         const grid = document.getElementById("sticker-grid"); grid.innerHTML = "";
-        snapshot.forEach((documento) => {
-            const fig = documento.data(); const idFig = documento.id;
+        const figurinhas = [];
+        snapshot.forEach((documento) => { figurinhas.push({ id: documento.id, ...documento.data() }); });
+
+        figurinhas.forEach((fig) => {
             const wrapper = document.createElement("div"); wrapper.className = "sticker-wrapper";
             const imgElement = document.createElement("img"); imgElement.src = fig.url; imgElement.className = "sticker-item";
             imgElement.onclick = function() { enviarFigurinhaSalva(fig.url); };
             const btnDel = document.createElement("button"); btnDel.className = "sticker-del-btn";
             btnDel.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-            btnDel.onclick = function(e) { e.stopPropagation(); excluirFigurinhaDaGaveta(idFig); };
+            btnDel.onclick = function(e) { e.stopPropagation(); excluirFigurinhaDaGaveta(fig.id); };
             wrapper.appendChild(imgElement); wrapper.appendChild(btnDel); grid.appendChild(wrapper);
         });
     });
@@ -479,7 +445,7 @@ window.salvarNovaFigurinha = async function(event) {
 };
 
 /* ─────────────────────────────────────────
-   RENDERIZAÇÃO DO CHAT E NOTIFICAÇÕES
+   RENDERIZAÇÃO DO CHAT E NOTIFICAÇÕES (OTIMIZADO)
 ───────────────────────────────────────── */
 function formatarDataHora(timestamp) {
     if (!timestamp) return "";
@@ -491,12 +457,11 @@ function formatarDataHora(timestamp) {
     return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${hora}`;
 }
 
-const opacidades = [1, 1, 1, 1, 1]; 
-
 let isInitialLoad = true;
 
+/* OTIMIZADO: LIMITANDO O CARREGAMENTO AS 50 MENSAGENS RECENTES */
 function carregarMensagens() {
-    const q = query(collection(db, "mensagens"), orderBy("hora"));
+    const q = query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50));
     onSnapshot(q, (snapshot) => {
         
         if (!isInitialLoad) {
@@ -517,11 +482,14 @@ function carregarMensagens() {
         }
 
         const chatBox = document.getElementById("chat-box"); chatBox.innerHTML = "";
-        const todas = []; snapshot.forEach((d) => todas.push({ id: d.id, ...d.data() }));
-        const ultimas = todas.slice(-5);
+        const todas = []; 
+        snapshot.forEach((d) => todas.push({ id: d.id, ...d.data() }));
+        
+        // Inverte a ordem das mensagens para que as mais recentes fiquem por último no chat
+        todas.reverse();
 
-        ultimas.forEach((mensagem, idx) => {
-            const idMsg = mensagem.id; const isOwn = mensagem.autor === usuarioAtual; const opacidade = opacidades[idx];
+        todas.forEach((mensagem) => {
+            const idMsg = mensagem.id; const isOwn = mensagem.autor === usuarioAtual; const opacidade = 1;
 
             if (!isOwn && !mensagem.lida && document.visibilityState === 'visible') {
                 updateDoc(doc(db, "mensagens", idMsg), { lida: true }).catch(e => console.log(e));
