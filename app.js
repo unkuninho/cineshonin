@@ -297,13 +297,11 @@ window.gerarECompartilharCard = async function() {
             const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
             textoTweet = `Acabei de assistir o episodio S${temp}E${ep} de ${selectedTMDBMedia.titulo}!`;
             
-            // SIMKL Style para Séries
             boxTop.innerHTML = `S${temp}E${ep}`;
             boxBottom.textContent = "JUST WATCHED";
         } else {
             textoTweet = `Acabei de assistir ${selectedTMDBMedia.titulo}!`;
             
-            // SIMKL Style para Filmes
             boxTop.innerHTML = `★ ${nota}`;
             boxBottom.textContent = "MY RATING";
         }
@@ -320,7 +318,6 @@ window.gerarECompartilharCard = async function() {
         posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
 
     } else {
-        // MODO YOUTUBE / LIVRE
         const txtLivre = document.getElementById("livre-title-input").value.trim();
         const urlLivre = document.getElementById("livre-url-input").value.trim();
         if (!txtLivre) return alert("Digite o que vocês assistiram!");
@@ -330,7 +327,6 @@ window.gerarECompartilharCard = async function() {
         subCap.textContent = "LIVRE • VÍDEO OU ESPORTE";
         textoTweet = `Acabei de assistir ${txtLivre}!`;
 
-        // SIMKL Style para Livre
         boxTop.innerHTML = `★ ${nota}`;
         boxBottom.textContent = "MY RATING";
 
@@ -343,14 +339,12 @@ window.gerarECompartilharCard = async function() {
         if (ytId) {
             const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`)}`;
             
-            posterWrap.style.display = "block";
-            posterWrap.style.width = "290px"; 
-            posterCap.style.aspectRatio = "16/9"; 
+            // NOVO COMANDO: Para o YouTube não ter poster, apenas a foto de fundo!
+            posterWrap.style.display = "none";
             
             bgImg.style.display = "block";
             bgNoise.style.opacity = "0.5"; 
             bgImg.src = ytThumb;
-            posterCap.src = ytThumb;
         } else {
             posterWrap.style.display = "none";
             bgImg.style.display = "none";
@@ -362,7 +356,6 @@ window.gerarECompartilharCard = async function() {
         conviteUrl = urlLivre;
     }
 
-    // DIMINUI A FONTE AUTOMATICAMENTE SE O TEXTO FOR GIGANTE PARA NÃO QUEBRAR
     if (tituloCap.textContent.length > 55) {
         tituloCap.style.fontSize = "26px";
     } else if (tituloCap.textContent.length > 30) {
@@ -373,8 +366,8 @@ window.gerarECompartilharCard = async function() {
 
     try {
         const promessas = [esperarImagem(avatar)];
-        if(bgImg.style.display !== "none") promessas.push(esperarImagem(bgImg));
-        if(posterWrap.style.display !== "none") promessas.push(esperarImagem(posterCap));
+        if(bgImg.style.display !== "none" && bgImg.src) promessas.push(esperarImagem(bgImg));
+        if(posterWrap.style.display !== "none" && posterCap.src) promessas.push(esperarImagem(posterCap));
         await Promise.all(promessas);
 
         const promiseBlob = new Promise(async (resolve, reject) => {
