@@ -192,6 +192,28 @@ window.mudarModoShare = function(modo) {
     }
 };
 
+// NOVO: Espião do YouTube para pegar o nome automático
+document.getElementById("livre-url-input").addEventListener("input", async (e) => {
+    const url = e.target.value.trim();
+    const inputTitulo = document.getElementById("livre-title-input");
+    
+    if (url.includes("youtube.com") || url.includes("youtu.be")) {
+        inputTitulo.value = "Buscando título...";
+        try {
+            // API pública para ler informações de sites sem dar erro de segurança
+            const res = await fetch(`https://noembed.com/embed?dataType=json&url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (data.title) {
+                inputTitulo.value = data.title;
+            } else {
+                inputTitulo.value = "";
+            }
+        } catch (err) {
+            inputTitulo.value = "";
+        }
+    }
+});
+
 document.getElementById("tmdb-search-input").addEventListener("input", (e) => {
     clearTimeout(debounceTimer); const q = e.target.value.trim(); const resBox = document.getElementById("tmdb-search-results");
     if (q.length < 2) { resBox.classList.add("hidden"); return; }
@@ -260,6 +282,9 @@ window.gerarECompartilharCard = async function() {
     avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
 
     let textoTweet = "";
+    let enviarConviteChat = false; 
+    let conviteTitulo = "";
+    let conviteUrl = "";
 
     if (modoShareAtual === 'tmdb') {
         if (!selectedTMDBMedia) return alert("Selecione um filme ou série primeiro!");
@@ -281,7 +306,6 @@ window.gerarECompartilharCard = async function() {
         tituloCap.textContent = selectedTMDBMedia.titulo;
         subCap.textContent = subText;
 
-        // Formato para Cinema (Retrato)
         posterWrap.style.display = "block";
         posterWrap.style.width = "240px"; 
         posterCap.style.aspectRatio = "2/3"; 
@@ -301,7 +325,6 @@ window.gerarECompartilharCard = async function() {
         subCap.textContent = "NOSSO ESPAÇO";
         textoTweet = `Acabei de assistir ${txtLivre}!`;
 
-        // Inteligência para extrair a thumbnail do Youtube!
         const extrairIdYoutube = (url) => {
             const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
             return (match && match[2].length === 11) ? match[2] : null;
@@ -309,11 +332,11 @@ window.gerarECompartilharCard = async function() {
         const ytId = extrairIdYoutube(urlLivre);
 
         if (ytId) {
-            // Se achou link do YouTube, ele muda o formato do card para 16:9 de TV
-            const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`)}`;
+            // CORREÇÃO IMAGEM YT: Puxa o 'hqdefault' em vez do maxresdefault (Garante não travar o card)
+            const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`)}`;
             
             posterWrap.style.display = "block";
-            posterWrap.style.width = "320px"; // Mais largo para encaixar vídeo do YT
+            posterWrap.style.width = "320px"; 
             posterCap.style.aspectRatio = "16/9"; 
             
             bgImg.style.display = "block";
@@ -321,15 +344,18 @@ window.gerarECompartilharCard = async function() {
             bgImg.src = ytThumb;
             posterCap.src = ytThumb;
         } else {
-            // Sem YouTube, apenas fundo escuro estiloso
             posterWrap.style.display = "none";
             bgImg.style.display = "none";
             bgNoise.style.opacity = "1";
         }
+
+        // Prepara as informações para mandar o convite no chat para a Shirlei!
+        enviarConviteChat = true;
+        conviteTitulo = txtLivre;
+        conviteUrl = urlLivre;
     }
 
     try {
-        // Pausa apenas se existir imagem para aguardar
         const promessas = [esperarImagem(avatar)];
         if(bgImg.style.display !== "none") promessas.push(esperarImagem(bgImg));
         if(posterWrap.style.display !== "none") promessas.push(esperarImagem(posterCap));
@@ -338,7 +364,7 @@ window.gerarECompartilharCard = async function() {
         const promiseBlob = new Promise(async (resolve, reject) => {
             try {
                 const cardElement = document.getElementById("capture-container");
-                const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10' });
+                const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10', allowTaint: true });
                 canvas.toBlob((blob) => {
                     if (blob) resolve(blob);
                     else reject(new Error("Falha ao criar a imagem"));
@@ -354,6 +380,18 @@ window.gerarECompartilharCard = async function() {
         setTimeout(() => {
             window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
         }, 100);
+
+        // NOVO: Envia a notificação/convite no chat!
+        if (enviarConviteChat) {
+            await addDoc(collection(db, "mensagens"), { 
+                tipo: "convite_avaliacao", 
+                titulo: conviteTitulo,
+                url: conviteUrl,
+                autor: usuarioAtual, 
+                hora: serverTimestamp(), 
+                lida: false 
+            });
+        }
 
     } catch (err) {
         console.error("Erro no Clipboard:", err);
@@ -417,12 +455,20 @@ window.salvarNovaFigurinha = async function(event) {
     }; reader.readAsDataURL(file);
 };
 
+// Função para que a Shirlei clique e abra a janela dela já com os dados!
+window.abrirModoLivrePreenchido = function(titulo, url) {
+    abrirCompartilhamento();
+    mudarModoShare('livre');
+    document.getElementById("livre-title-input").value = titulo || "";
+    if(url && url !== "undefined") document.getElementById("livre-url-input").value = url;
+};
+
 function formatarDataHora(ts) { if(!ts) return ""; const d = ts.toDate?ts.toDate():new Date(ts); const h = new Date(); const o = new Date(h); o.setDate(h.getDate()-1); const hh = d.toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}); if(d.toDateString()===h.toDateString()) return `hoje ${hh}`; if(d.toDateString()===o.toDateString()) return `ontem ${hh}`; return d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit"})+` ${hh}`; }
 
 let isInitialLoad = true;
 function carregarMensagens() {
     onSnapshot(query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50)), (snap) => {
-        if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':m.texto}); } }); }
+        if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':(m.tipo==='convite_avaliacao'?'Novo convite de avaliação!':m.texto)}); } }); }
         const box = document.getElementById("chat-box"); box.innerHTML = "";
         const todas = []; snap.forEach((d) => todas.push({ id: d.id, ...d.data() })); todas.reverse();
         todas.forEach((m) => {
@@ -432,17 +478,31 @@ function carregarMensagens() {
             const sep = document.createElement("div"); sep.className = "msg-separador"; sep.textContent = formatarDataHora(m.hora); box.appendChild(sep);
             const r = document.createElement("div"); r.className = `message-row ${isOwn?'own':'other'}`;
             const ava = `<img src="${avatares[m.autor]||""}" class="avatar">`;
-            const txt = m.texto ? m.texto.replace(/'/g, "\\'") : "";
-            const bResp = `<button class="btn-action" onclick="prepararResposta('${m.id}', '${m.autor}', '${txt}', '${m.tipo}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
             
             let btnAct = "";
-            if (isOwn) {
-                if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-                else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="editarMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-            } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
+            let cont = "";
 
-            let cont = m.tipo==="figurinha" ? `<img src="${m.url}" class="sticker-img">` : `<span id="texto-${m.id}">${m.texto||""}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
-            if (m.resposta) cont = `<div class="reply-block"><strong>${m.resposta.autor}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':m.resposta.texto}</div>` + cont;
+            // NOVO: Renderiza visualmente o Convite de Avaliação
+            if (m.tipo === "convite_avaliacao") {
+                cont = `<div style="text-align:center;">
+                            <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:4px;">🎬 Acabei de avaliar:</div>
+                            <strong style="color:#ffcc00; font-size:14px; display:block; margin-bottom:8px;">${m.titulo}</strong>
+                            <button onclick="abrirModoLivrePreenchido('${m.titulo.replace(/'/g, "\\'")}', '${m.url}')" style="background:#5865F2; color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; width:100%;">Avaliar também 📝</button>
+                        </div>`;
+                if (isOwn) btnAct = `<div class="msg-actions"><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+            } else {
+                const txt = m.texto ? m.texto.replace(/'/g, "\\'") : "";
+                const bResp = `<button class="btn-action" onclick="prepararResposta('${m.id}', '${m.autor}', '${txt}', '${m.tipo}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
+                
+                if (isOwn) {
+                    if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                    else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="editarMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
+
+                cont = m.tipo==="figurinha" ? `<img src="${m.url}" class="sticker-img">` : `<span id="texto-${m.id}">${m.texto||""}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
+                if (m.resposta) cont = `<div class="reply-block"><strong>${m.resposta.autor}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':m.resposta.texto}</div>` + cont;
+            }
+
             if (isOwn) cont += `<span class="msg-status"><svg viewBox="0 0 24 24" fill="none" stroke="${m.lida?"#3ba55c":"rgba(255,255,255,0.4)"}" stroke-width="2.5"><path d="M18 6L7 17l-5-5"/><path d="M22 10l-7.5 7.5L13 16"/></svg></span>`;
 
             r.innerHTML = isOwn ? `<div class="msg-col col-own"><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>${ava}` : `${ava}<div class="msg-col col-other"><div class="message-author-above">${m.autor}</div><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>`;
