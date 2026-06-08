@@ -208,7 +208,6 @@ function mostrarResultadosTMDB(results) {
         const titulo = item.title || item.name; const ano = (item.release_date || item.first_air_date || "N/A").substring(0,4);
         const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : "https://via.placeholder.com/32x48/111/fff?text=Capa";
         
-        // CORREÇÃO AQUI: Capta também a imagem "backdrop" (horizontal) para usar de fundo!
         const backdropUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w1280${item.poster_path}` : poster);
         const highResPoster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : poster;
 
@@ -237,6 +236,13 @@ function exibirNotificacaoCopia() {
     box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
 }
 
+// Helper para garantir que a imagem termine de carregar antes de bater o print
+const esperarImagem = (img) => new Promise((resolve) => {
+    if (img.complete) return resolve();
+    img.onload = resolve;
+    img.onerror = resolve; // Resolve até se der erro, pra não travar a tela
+});
+
 window.gerarECompartilharCard = async function() {
     const aviso = document.getElementById("gerando-aviso");
     const tituloCap = document.getElementById("cap-title");
@@ -251,8 +257,9 @@ window.gerarECompartilharCard = async function() {
     let nota = document.getElementById("share-rating").value || "S/N";
     ratingCap.textContent = nota;
 
+    // NOVO PROXY: Super rápido e confiável
     const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
-    avatar.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(fotoOriginal)}`;
+    avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
 
     let textoTweet = "";
 
@@ -263,24 +270,26 @@ window.gerarECompartilharCard = async function() {
         const isTv = selectedTMDBMedia.media_type === 'tv';
         let subText = isTv ? "SÉRIE" : "FILME";
         
-        let textoAdd = "";
         if (isTv) {
-            const temp = document.getElementById("tmdb-season").value; const ep = document.getElementById("tmdb-episode").value;
-            if (temp) { subText += ` • T${temp}`; textoAdd += ` Temporada ${temp}`; }
-            if (ep) { subText += `E${ep}`; textoAdd += ` Episódio ${ep}`; }
-            if(textoAdd) textoAdd = ` (${textoAdd.trim()})`;
+            // Pega os valores e garante o "0" na frente (Ex: 1 vira 01)
+            const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
+            const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
+            
+            subText += ` • T${temp}E${ep}`;
+            textoTweet = `Acabei de assistir o episodio S${temp}E${ep} de ${selectedTMDBMedia.titulo}!`;
+        } else {
+            textoTweet = `Acabei de assistir ${selectedTMDBMedia.titulo}!`;
         }
         
         tituloCap.textContent = selectedTMDBMedia.titulo;
         subCap.textContent = subText;
-        textoTweet = `Estava assistindo ${selectedTMDBMedia.titulo}${textoAdd} e dou a nota ${nota}/10`;
 
         posterWrap.style.display = "block";
         bgImg.style.display = "block";
         bgNoise.style.opacity = "0.5"; 
-        // AQUI ESTÁ A MÁGICA: O fundo agora puxa o Backdrop (A imagem horizontal 16:9 limpa do TMDB)
-        bgImg.src = selectedTMDBMedia.backdrop; 
-        posterCap.src = selectedTMDBMedia.highResPoster;
+        
+        bgImg.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.backdrop)}`;
+        posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
 
     } else {
         const txtLivre = document.getElementById("livre-title-input").value.trim();
@@ -289,7 +298,7 @@ window.gerarECompartilharCard = async function() {
 
         tituloCap.textContent = txtLivre;
         subCap.textContent = "NOSSO ESPAÇO";
-        textoTweet = `Estava assistindo ${txtLivre} e dou a nota ${nota}/10`;
+        textoTweet = `Acabei de assistir ${txtLivre}!`;
 
         posterWrap.style.display = "none";
         bgImg.style.display = "none";
@@ -297,10 +306,16 @@ window.gerarECompartilharCard = async function() {
     }
 
     try {
+        // A mágica anti-travamento: Espera exatamente as imagens carregarem
+        await Promise.all([
+            esperarImagem(avatar),
+            esperarImagem(bgImg),
+            esperarImagem(posterCap)
+        ]);
+
         const promiseBlob = new Promise(async (resolve, reject) => {
             try {
                 const cardElement = document.getElementById("capture-container");
-                await new Promise(r => setTimeout(r, 150)); 
                 const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10' });
                 canvas.toBlob((blob) => {
                     if (blob) resolve(blob);
@@ -309,6 +324,7 @@ window.gerarECompartilharCard = async function() {
             } catch (e) { reject(e); }
         });
 
+        // Passa a promessa direto pro Clipboard pra não cair no bloqueio de tempo
         const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
         await navigator.clipboard.write([clipboardItem]);
         
@@ -316,7 +332,7 @@ window.gerarECompartilharCard = async function() {
         
         setTimeout(() => {
             window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
-        }, 300);
+        }, 100);
 
     } catch (err) {
         console.error("Erro no Clipboard:", err);
@@ -416,15 +432,14 @@ function carregarMensagens() {
 }
 
 /* ─────────────────────────────────────────
-   FUNDO ANIMADO INFINITO DA TELA DE LOGIN
+   FUNDO ANIMADO INFINITO
 ───────────────────────────────────────── */
-// Cole aqui os seus 5 links do Google Drive!
 const fotosDeFundo = [
-    "SUA_FOTO_1_AQUI",
-    "SUA_FOTO_2_AQUI",
-    "SUA_FOTO_3_AQUI",
-    "SUA_FOTO_4_AQUI",
-    "SUA_FOTO_5_AQUI"
+    "https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczNm-4vUYJvI93aikfdouiDN-gxmI-aF0wyGf1XfvwKnNOqkiAdZca1MlHTK_k8EiYd9coqrlB_ssp0jiTHhpXXKA94NzIGf8gvK54weLB6KEhhWcS35ZNAUtbB_IEnoGCd_yLT__hi0kd-MYo_2W5cS=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczPZEbb1VJvfwOQxrX052UbCRWAg_u3PTQa2BOBFONhGzGLJlQe8bw30ZG0ouw0pIDO60YME1fIvbGP6mbLCAm3sKprEenj-132uqdXspCa6bzK-61QMmGGw3bxT91ybaTvLGcUkpuUBi_ZkUj9PDIVD=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczOAn5RfTwpDO2J8x_ArQrRWO3iR9EEXfUgkCY0vL7DhXRqpUj0aDSsOgFaH1rIsbOgBO5Geg5_IVgCL07gQ5NxGgrJydfn2eKd9gJHZfhM7LAXDCcKpLWgeNWxTDrt7TJZYaR-v57yzf_QjA2HqsdmP=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczN8LSIJRG_WyVIuVsZJwYoO2zraP9LAmkKB-zjjpjxV-7pVmxfeutQeuYkPytiyDm8UNK2BfRRJGTB8Pux3TgHoXeRF82xbcp7fgu4z-xctXtUxuCAo1aserBl01dRYzoN_6mtlBQQVhJaBS2tRy607=w683-h911-s-no-gm?authuser=0"
 ];
 
 function inicializarSliderFundo() { 
