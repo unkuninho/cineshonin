@@ -17,9 +17,6 @@
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0c10; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: white; }
         .hidden { display: none !important; }
 
-        /* ══════════════════════════════
-           LOGIN E CARROSSEL INFINITO
-        ══════════════════════════════ */
         #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; position: relative; background-color: #0b0c10; }
         .slider-wrapper { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
         .slider-track { display: flex; height: 100%; width: max-content; animation: slide 40s linear infinite; }
@@ -38,17 +35,11 @@
         .login-card-name { margin-top: 20px; font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.85); }
         .login-card-hint { margin-top: 5px; font-size: 13px; color: rgba(255,255,255,0.3); }
 
-        /* ══════════════════════════════
-           SALA DE VÍDEO
-        ══════════════════════════════ */
         #room-screen { position: relative; width: 100vw; height: 100vh; }
         #video-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: black; position: relative; }
         #screen-video { width: 100%; height: 100%; object-fit: contain; }
         #sem-transmissao { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: rgba(255,255,255,0.2); font-size: 14px; }
 
-        /* ══════════════════════════════
-           PAINEL ESQUERDO (Controles)
-        ══════════════════════════════ */
         #left-panel-wrapper { position: absolute; top: 20px; left: 0; z-index: 20; display: flex; align-items: flex-start; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #left-panel-wrapper.minimized { transform: translateX(calc(-100% + 24px)); }
         #left-panel-content { background: rgba(12, 12, 16, var(--bg-alpha)); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); border-left: none; border-radius: 0 20px 20px 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 12px 0 30px rgba(0,0,0,0.5); min-width: 320px; }
@@ -77,9 +68,6 @@
         .btn-share:hover { background: rgba(255,255,255,0.09); color: white; border-color: rgba(255,255,255,0.14); }
         .btn-share.transmitindo { background: rgba(237,66,69,0.12); border-color: rgba(237,66,69,0.3); color: #ed4245; }
 
-        /* ══════════════════════════════
-           PAINEL DIREITO (Chat Arrastável)
-        ══════════════════════════════ */
         #overlay-panel { position: absolute; bottom: 20px; right: 20px; width: 370px; background: rgba(12, 12, 16, var(--bg-alpha)); backdrop-filter: blur(20px); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 10px; z-index: 10; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 12px 40px rgba(0,0,0,0.5); transition: background 0.1s ease; }
         #drag-handle { width: 100%; height: 16px; display: flex; justify-content: center; align-items: center; cursor: grab; margin-top: -6px; margin-bottom: -2px; opacity: 0.5; transition: 0.2s; }
         #drag-handle:active { cursor: grabbing; }
@@ -125,7 +113,6 @@
         #reply-preview-text { font-size: 12px; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
         .btn-cancel-reply { background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;}
         
-        /* Pickers e Inputs */
         emoji-picker { position: absolute; bottom: 65px; right: 15px; z-index: 100; height: 320px; --background: #1e1f24; border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         #sticker-picker { position: absolute; bottom: 65px; right: 15px; width: 310px; height: 310px; background: #1e1f24; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.65); }
@@ -149,9 +136,6 @@
         body.fullscreen-active #drag-handle { opacity: 0.15; }
         body.fullscreen-active .input-group { background: rgba(12, 12, 16, 0.85); padding: 8px; border-radius: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 
-        /* ══════════════════════════════
-           MODAIS COMUNS
-        ══════════════════════════════ */
         .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .custom-modal { background: #1e1f24; padding: 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 340px; display: flex; flex-direction: column; gap: 16px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .custom-modal h3 { margin: 0; font-size: 18px; font-weight: 600; }
@@ -166,9 +150,6 @@
         .img-container { width: 100%; max-height: 350px; background: #0b0c10; border-radius: 12px; overflow: hidden; }
         .img-container img { display: block; max-width: 100%; }
 
-        /* ══════════════════════════════
-           MODAL DE COMPARTILHAMENTO E TMDB
-        ══════════════════════════════ */
         .tmdb-modal { width: 380px; }
         .tmdb-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
         .tmdb-tab { flex: 1; padding: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; transition: 0.2s; }
@@ -184,7 +165,6 @@
         #tmdb-selected-poster { width: 40px; height: 60px; border-radius: 4px; object-fit: cover; }
         #tmdb-selected-title { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.3;}
 
-        /* AVISO DE SUCESSO COPIADO */
         #copia-aviso { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #3ba55c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 10000; animation: fadeOut 3s forwards; }
         @keyframes fadeOut { 0% { opacity: 0; transform: translate(-50%, 10px); } 10% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; display: none; } }
     </style>
@@ -208,7 +188,6 @@
     </div>
 
     <div id="room-screen" class="hidden">
-        
         <div id="video-container">
             <video id="screen-video" autoplay playsinline class="hidden"></video>
             <div id="sem-transmissao">
@@ -221,20 +200,15 @@
             <div id="left-panel-content">
                 <div class="top-controls">
                     <span id="user-badge"><img id="badge-avatar" src=""><span id="user-badge-name">—</span></span>
-                    
                     <button class="btn-top" onclick="abrirModalPerfil()" title="Editar Perfil"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2L12 4.5M10.5 1.5a2.12 2.12 0 013 3L4 14H1v-3L10.5 1.5z"/></svg></button>
                     <input type="file" id="profile-upload" accept="image/*" class="hidden" onchange="iniciarCorteDeFoto(event)">
-                    
                     <div id="presence-badge"><span class="presence-dot offline" id="presence-dot"></span><span id="presence-label">—</span></div>
                     <div style="flex:1"></div>
-                    
                     <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar no X (Twitter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
                     <button class="btn-top" onclick="toggleFullScreen()" title="Tela cheia"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg></button>
                     <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar histórico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h10M5 4V2.5h4V4M4.5 4v7h5V4"/><line x1="6" y1="6.5" x2="6" y2="9.5"/><line x1="8" y1="6.5" x2="8" y2="9.5"/></svg></button>
-                    
                     <div class="transparency-wrap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M5 1v8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M1 5a4 4 0 014-4v8a4 4 0 01-4-4z" fill="rgba(255,255,255,0.35)"/></svg><input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)"></div>
                 </div>
-                
                 <video id="local-preview" autoplay playsinline muted class="hidden"></video>
                 <button id="btn-share" class="btn-share hidden" onclick="iniciarCompartilhamento()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>Compartilhar tela</button>
             </div>
@@ -243,20 +217,16 @@
 
         <div id="overlay-panel">
             <div id="drag-handle"><svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="3" r="1"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="3" r="1"/><circle cx="15" cy="9" r="1"/></svg></div>
-            
             <div id="chat-box"></div>
-            
             <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
             <div id="sticker-picker" class="hidden">
                 <div class="sticker-header"><span>Gaveta de Figurinhas</span><button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Adicionar</button><input type="file" id="sticker-upload" accept="image/*" class="hidden" onchange="salvarNovaFigurinha(event)"></div>
                 <div id="sticker-grid"></div>
             </div>
-            
             <div id="reply-preview-container" class="hidden">
                 <div class="reply-preview-content"><span id="reply-preview-author">Nome</span><span id="reply-preview-text">Texto...</span></div>
                 <button onclick="cancelarResposta()" class="btn-cancel-reply"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-            
             <div class="input-group">
                 <button class="btn-icon" onclick="toggleEmojiPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="9" r="7.5"/><circle cx="6.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><path d="M6 11.5c.8 1.2 5.2 1.2 6 0"/></svg></button>
                 <button class="btn-icon" onclick="toggleStickerPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1.5" y="1.5" width="15" height="15" rx="3"/><path d="M9 1.5v15M1.5 9h15"/></svg></button>
@@ -320,27 +290,41 @@
         </div>
     </div>
 
-    <div id="capture-container" style="position: absolute; left: -9999px; top: 0; width: 800px; height: 450px; background: #0b0c10; overflow: hidden; display: flex; font-family: -apple-system, sans-serif;">
-        <img id="cap-bg-img" src="" crossorigin="anonymous" style="position:absolute; width:100%; height:100%; object-fit:cover; filter:blur(25px) brightness(0.35); z-index:0; display:none;">
-        <div id="cap-bg-noise" style="position:absolute; width:100%; height:100%; background: linear-gradient(135deg, #0b0c10 0%, #1e1f24 100%); z-index:0; opacity:1;">
+    <div id="capture-container" style="position: absolute; left: -9999px; top: 0; width: 800px; height: 450px; background: #0b0c10; overflow: hidden; display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <img id="cap-bg-img" src="" crossorigin="anonymous" style="position:absolute; width:100%; height:100%; object-fit:cover; filter:blur(15px) brightness(0.4); z-index:0; display:none; transform: scale(1.1);">
+        <div id="cap-bg-noise" style="position:absolute; width:100%; height:100%; background: linear-gradient(135deg, #0b0c10 0%, #1a1a24 100%); z-index:0; opacity:1;">
             <div style="position:absolute; inset:0; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px); z-index:1;"></div>
         </div>
-        <div style="position:relative; z-index:1; display:flex; width:100%; padding: 40px 50px; align-items:center;">
-            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-                <div id="cap-subtitle" style="color:rgba(255,255,255,0.6); font-size:18px; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">CATEGORIA</div>
-                <div id="cap-title" style="color:#fff; font-size:48px; font-weight:800; margin-bottom:24px; line-height:1.1; text-shadow: 0 4px 12px rgba(0,0,0,0.5);">TÍTULO DO VÍDEO OU FILME AQUI</div>
+
+        <div style="position:relative; z-index:1; display:flex; width:100%; padding: 40px 50px; align-items:center; justify-content: space-between;">
+            
+            <div style="display:flex; flex-direction:column; justify-content:center; max-width: 55%;">
+                <div id="cap-subtitle" style="color:rgba(255,255,255,0.7); font-size:15px; font-weight:600; margin-bottom:10px; letter-spacing: 0.5px;">2026 • MOVIES</div>
+                
+                <div id="cap-title" style="color:#fff; font-size:40px; font-weight:800; margin-bottom:24px; line-height:1.2; text-shadow: 0 4px 12px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
+                    TITLE
+                </div>
+                
                 <div style="display:flex; align-items:center; gap:20px;">
-                    <img id="cap-avatar" src="" crossorigin="anonymous" style="width:72px; height:72px; border-radius:50%; border:3px solid #5865F2; object-fit:cover; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
-                    <div style="background:#ffcc00; color:#0b0c10; padding:12px 24px; border-radius:16px; font-weight:900; font-size:36px; display:flex; align-items:center; gap:10px; box-shadow: 0 8px 24px rgba(255,204,0,0.2);">
-                        ★ <span id="cap-rating">9.0</span>
+                    <img id="cap-avatar" src="" crossorigin="anonymous" style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); object-fit:cover; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
+                    
+                    <div style="display:flex; flex-direction:column; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                        <div id="cap-box-top" style="background:#ffcc00; color:#0b0c10; padding:10px 24px; font-weight:900; font-size:26px; display:flex; align-items:center; justify-content:center;">
+                            ★ 8.0
+                        </div>
+                        <div id="cap-box-bottom" style="background:#fff; color:#0b0c10; padding:4px 24px; font-weight:800; font-size:10px; text-align:center; text-transform:uppercase; letter-spacing:0.5px;">
+                            MY RATING
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top:30px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.3); display:flex; align-items:center; gap:8px;">
+
+                <div style="margin-top:35px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> Nosso Espaço
                 </div>
             </div>
-            <div id="cap-poster-wrapper" style="width:240px; margin-left:40px; display:none;">
-                <img id="cap-poster" src="" crossorigin="anonymous" style="width:100%; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,0.8); object-fit:cover; aspect-ratio: 2/3;">
+
+            <div id="cap-poster-wrapper" style="width:230px; display:none; flex-shrink: 0;">
+                <img id="cap-poster" src="" crossorigin="anonymous" style="width:100%; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.6); object-fit:cover; aspect-ratio: 2/3;">
             </div>
         </div>
     </div>
