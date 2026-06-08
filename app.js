@@ -192,7 +192,6 @@ window.mudarModoShare = function(modo) {
     }
 };
 
-// NOVO: Espião do YouTube para pegar o nome automático
 document.getElementById("livre-url-input").addEventListener("input", async (e) => {
     const url = e.target.value.trim();
     const inputTitulo = document.getElementById("livre-title-input");
@@ -200,14 +199,10 @@ document.getElementById("livre-url-input").addEventListener("input", async (e) =
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
         inputTitulo.value = "Buscando título...";
         try {
-            // API pública para ler informações de sites sem dar erro de segurança
             const res = await fetch(`https://noembed.com/embed?dataType=json&url=${encodeURIComponent(url)}`);
             const data = await res.json();
-            if (data.title) {
-                inputTitulo.value = data.title;
-            } else {
-                inputTitulo.value = "";
-            }
+            if (data.title) inputTitulo.value = data.title;
+            else inputTitulo.value = "";
         } catch (err) {
             inputTitulo.value = "";
         }
@@ -235,14 +230,14 @@ function mostrarResultadosTMDB(results) {
 
         const div = document.createElement("div"); div.className = "tmdb-result-item";
         div.innerHTML = `<img src="${poster}" class="tmdb-result-poster"><div class="tmdb-result-text"><strong>${titulo}</strong><span style="font-size:11px;color:gray;">${item.media_type==='movie'?'🎬 Filme':'📺 Série'} • ${ano}</span></div>`;
-        div.onclick = () => selecionarTMDB(item, titulo, highResPoster, backdropUrl);
+        div.onclick = () => selecionarTMDB(item, titulo, highResPoster, backdropUrl, ano);
         resBox.appendChild(div);
     });
     resBox.classList.remove("hidden");
 }
 
-window.selecionarTMDB = function(item, titulo, posterUrlHighRes, backdropUrl) {
-    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes, backdrop: backdropUrl };
+window.selecionarTMDB = function(item, titulo, posterUrlHighRes, backdropUrl, ano) {
+    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes, backdrop: backdropUrl, ano: ano };
     document.getElementById("tmdb-search-results").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.add("hidden");
     document.getElementById("tmdb-selected").classList.remove("hidden"); document.getElementById("tmdb-selected-poster").src = `https://image.tmdb.org/t/p/w92${item.poster_path}`; document.getElementById("tmdb-selected-title").textContent = titulo;
     if (item.media_type === 'tv') document.getElementById("tmdb-tv-inputs").classList.remove("hidden"); else document.getElementById("tmdb-tv-inputs").classList.add("hidden");
@@ -268,7 +263,9 @@ window.gerarECompartilharCard = async function() {
     const aviso = document.getElementById("gerando-aviso");
     const tituloCap = document.getElementById("cap-title");
     const subCap = document.getElementById("cap-subtitle");
-    const ratingCap = document.getElementById("cap-rating");
+    const boxTop = document.getElementById("cap-box-top");
+    const boxBottom = document.getElementById("cap-box-bottom");
+    
     const posterCap = document.getElementById("cap-poster");
     const posterWrap = document.getElementById("cap-poster-wrapper");
     const bgImg = document.getElementById("cap-bg-img");
@@ -276,7 +273,6 @@ window.gerarECompartilharCard = async function() {
     const avatar = document.getElementById("cap-avatar");
     
     let nota = document.getElementById("share-rating").value || "S/N";
-    ratingCap.textContent = nota;
 
     const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
     avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
@@ -291,23 +287,31 @@ window.gerarECompartilharCard = async function() {
         aviso.classList.remove("hidden");
 
         const isTv = selectedTMDBMedia.media_type === 'tv';
-        let subText = isTv ? "SÉRIE" : "FILME";
+        let anoBase = selectedTMDBMedia.ano || new Date().getFullYear();
+        let subText = isTv ? `${anoBase} • TV SHOW` : `${anoBase} • MOVIES`;
         
+        tituloCap.textContent = selectedTMDBMedia.titulo;
+
         if (isTv) {
             const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
             const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
-            
-            subText += ` • T${temp}E${ep}`;
             textoTweet = `Acabei de assistir o episodio S${temp}E${ep} de ${selectedTMDBMedia.titulo}!`;
+            
+            // SIMKL Style para Séries
+            boxTop.innerHTML = `S${temp}E${ep}`;
+            boxBottom.textContent = "JUST WATCHED";
         } else {
             textoTweet = `Acabei de assistir ${selectedTMDBMedia.titulo}!`;
+            
+            // SIMKL Style para Filmes
+            boxTop.innerHTML = `★ ${nota}`;
+            boxBottom.textContent = "MY RATING";
         }
         
-        tituloCap.textContent = selectedTMDBMedia.titulo;
         subCap.textContent = subText;
 
         posterWrap.style.display = "block";
-        posterWrap.style.width = "240px"; 
+        posterWrap.style.width = "220px"; 
         posterCap.style.aspectRatio = "2/3"; 
         
         bgImg.style.display = "block";
@@ -316,14 +320,19 @@ window.gerarECompartilharCard = async function() {
         posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
 
     } else {
+        // MODO YOUTUBE / LIVRE
         const txtLivre = document.getElementById("livre-title-input").value.trim();
         const urlLivre = document.getElementById("livre-url-input").value.trim();
         if (!txtLivre) return alert("Digite o que vocês assistiram!");
         aviso.classList.remove("hidden");
 
         tituloCap.textContent = txtLivre;
-        subCap.textContent = "NOSSO ESPAÇO";
+        subCap.textContent = "LIVRE • VÍDEO OU ESPORTE";
         textoTweet = `Acabei de assistir ${txtLivre}!`;
+
+        // SIMKL Style para Livre
+        boxTop.innerHTML = `★ ${nota}`;
+        boxBottom.textContent = "MY RATING";
 
         const extrairIdYoutube = (url) => {
             const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
@@ -332,11 +341,10 @@ window.gerarECompartilharCard = async function() {
         const ytId = extrairIdYoutube(urlLivre);
 
         if (ytId) {
-            // CORREÇÃO IMAGEM YT: Puxa o 'hqdefault' em vez do maxresdefault (Garante não travar o card)
             const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`)}`;
             
             posterWrap.style.display = "block";
-            posterWrap.style.width = "320px"; 
+            posterWrap.style.width = "290px"; 
             posterCap.style.aspectRatio = "16/9"; 
             
             bgImg.style.display = "block";
@@ -349,10 +357,18 @@ window.gerarECompartilharCard = async function() {
             bgNoise.style.opacity = "1";
         }
 
-        // Prepara as informações para mandar o convite no chat para a Shirlei!
         enviarConviteChat = true;
         conviteTitulo = txtLivre;
         conviteUrl = urlLivre;
+    }
+
+    // DIMINUI A FONTE AUTOMATICAMENTE SE O TEXTO FOR GIGANTE PARA NÃO QUEBRAR
+    if (tituloCap.textContent.length > 55) {
+        tituloCap.style.fontSize = "26px";
+    } else if (tituloCap.textContent.length > 30) {
+        tituloCap.style.fontSize = "32px";
+    } else {
+        tituloCap.style.fontSize = "40px";
     }
 
     try {
@@ -381,7 +397,6 @@ window.gerarECompartilharCard = async function() {
             window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
         }, 100);
 
-        // NOVO: Envia a notificação/convite no chat!
         if (enviarConviteChat) {
             await addDoc(collection(db, "mensagens"), { 
                 tipo: "convite_avaliacao", 
@@ -455,7 +470,6 @@ window.salvarNovaFigurinha = async function(event) {
     }; reader.readAsDataURL(file);
 };
 
-// Função para que a Shirlei clique e abra a janela dela já com os dados!
 window.abrirModoLivrePreenchido = function(titulo, url) {
     abrirCompartilhamento();
     mudarModoShare('livre');
@@ -482,7 +496,6 @@ function carregarMensagens() {
             let btnAct = "";
             let cont = "";
 
-            // NOVO: Renderiza visualmente o Convite de Avaliação
             if (m.tipo === "convite_avaliacao") {
                 cont = `<div style="text-align:center;">
                             <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:4px;">🎬 Acabei de avaliar:</div>
