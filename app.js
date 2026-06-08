@@ -232,7 +232,7 @@ function exibirNotificacaoCopia() {
     box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
 }
 
-// A MÁGICA DE TRANSFORMAR HTML EM IMAGEM E MANDAR PRO CLIPBOARD
+// CORREÇÃO: Função Mágica atualizada com o Proxy de Imagem e API assíncrona
 window.gerarECompartilharCard = async function() {
     const aviso = document.getElementById("gerando-aviso");
     const tituloCap = document.getElementById("cap-title");
@@ -246,11 +246,14 @@ window.gerarECompartilharCard = async function() {
     
     let nota = document.getElementById("share-rating").value || "S/N";
     ratingCap.textContent = nota;
-    avatar.src = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
+
+    // CORREÇÃO 1: Usa um "Proxy" gratuito para a foto de perfil não bloquear a segurança do navegador
+    const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
+    avatar.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(fotoOriginal)}`;
 
     let textoTweet = "";
 
-    // CONFIGURA O CARD DEPENDENDO DO MODO
+    // MODO TMDB
     if (modoShareAtual === 'tmdb') {
         if (!selectedTMDBMedia) return alert("Selecione um filme ou série primeiro!");
         aviso.classList.remove("hidden");
@@ -270,15 +273,14 @@ window.gerarECompartilharCard = async function() {
         subCap.textContent = subText;
         textoTweet = `Estava assistindo ${selectedTMDBMedia.titulo}${textoAdd} e dou a nota ${nota}/10`;
 
-        // Mostra fundo de poster borrado + Poster lateral
         posterWrap.style.display = "block";
         bgImg.style.display = "block";
-        bgNoise.style.opacity = "0.5"; // Mistura o ruido escuro com a capa colorida
+        bgNoise.style.opacity = "0.5"; 
         bgImg.src = selectedTMDBMedia.highResPoster;
         posterCap.src = selectedTMDBMedia.highResPoster;
 
     } else {
-        // MODO LIVRE (Futebol, Youtube, etc)
+        // MODO LIVRE
         const txtLivre = document.getElementById("livre-title-input").value.trim();
         if (!txtLivre) return alert("Digite o que vocês assistiram!");
         aviso.classList.remove("hidden");
@@ -287,44 +289,44 @@ window.gerarECompartilharCard = async function() {
         subCap.textContent = "NOSSO ESPAÇO";
         textoTweet = `Estava assistindo ${txtLivre} e dou a nota ${nota}/10`;
 
-        // Esconde poster, deixa apenas a textura noise de fundo simulando design esportivo/VHS
         posterWrap.style.display = "none";
         bgImg.style.display = "none";
         bgNoise.style.opacity = "1";
     }
 
-    // Dá um tempo curto (1 segundo) para as imagens carregarem no HTML invisivel antes da foto
-    setTimeout(async () => {
-        try {
-            const cardElement = document.getElementById("capture-container");
-            const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10' });
-            
-            canvas.toBlob(async (blob) => {
-                try {
-                    // Tenta copiar para a Área de Transferência
-                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                    exibirNotificacaoCopia();
-                    
-                    // Abre o X
-                    setTimeout(() => {
-                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
-                    }, 800);
-                } catch (err) {
-                    // Fallback para Celular (Web Share API)
-                    if (navigator.share) {
-                        const file = new File([blob], "avaliacao.png", { type: "image/png" });
-                        await navigator.share({ title: "Avaliação", text: textoTweet, files: [file] });
-                    } else {
-                        alert("Ocorreu um erro ao copiar a imagem.");
-                    }
-                }
-                fecharModalShare();
-                aviso.classList.add("hidden");
-            }, 'image/png');
-        } catch (e) {
-            console.error(e); alert("Erro ao gerar arte."); aviso.classList.add("hidden");
-        }
-    }, 1000);
+    // CORREÇÃO 2: Cria a cópia assíncrona oficial do navegador para não ser bloqueada
+    try {
+        const promiseBlob = new Promise(async (resolve, reject) => {
+            try {
+                const cardElement = document.getElementById("capture-container");
+                // Pausa minúscula apenas para o HTML renderizar o texto recém-adicionado
+                await new Promise(r => setTimeout(r, 150)); 
+                const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10' });
+                canvas.toBlob((blob) => {
+                    if (blob) resolve(blob);
+                    else reject(new Error("Falha ao criar a imagem"));
+                }, 'image/png');
+            } catch (e) { reject(e); }
+        });
+
+        // Grava no Clipboard usando o formato Promise nativo
+        const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
+        await navigator.clipboard.write([clipboardItem]);
+        
+        exibirNotificacaoCopia();
+        
+        // Abre o X na mesma hora
+        setTimeout(() => {
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
+        }, 300);
+
+    } catch (err) {
+        console.error("Erro no Clipboard:", err);
+        alert("O seu navegador bloqueou a cópia automática da imagem. Tente novamente clicando no botão!");
+    } finally {
+        fecharModalShare();
+        aviso.classList.add("hidden");
+    }
 };
 
 /* ─────────────────────────────────────────
