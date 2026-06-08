@@ -162,7 +162,7 @@ window.salvarFotoCortada = function() { if (!cropperInstance) return; const canv
 function aplicarNovoPerfil(novoNome, novaFoto) { setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() }); usuarioAtual = novoNome; avatares[usuarioAtual] = novaFoto; atualizarBadgeUsuario(); marcarPresenca(usuarioAtual, true); carregarMensagens(); }
 
 /* ─────────────────────────────────────────
-   GERAÇÃO DE CARD (TMDB & LIVRE) + COMPARTILHAMENTO
+   GERAÇÃO DE CARD (TMDB & LIVRE YOUTUBE)
 ───────────────────────────────────────── */
 const TMDB_API_KEY = "72c510d429567c89261f7a37b8ef9a0b";
 let debounceTimer;
@@ -236,11 +236,10 @@ function exibirNotificacaoCopia() {
     box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
 }
 
-// Helper para garantir que a imagem termine de carregar antes de bater o print
 const esperarImagem = (img) => new Promise((resolve) => {
     if (img.complete) return resolve();
     img.onload = resolve;
-    img.onerror = resolve; // Resolve até se der erro, pra não travar a tela
+    img.onerror = resolve; 
 });
 
 window.gerarECompartilharCard = async function() {
@@ -257,7 +256,6 @@ window.gerarECompartilharCard = async function() {
     let nota = document.getElementById("share-rating").value || "S/N";
     ratingCap.textContent = nota;
 
-    // NOVO PROXY: Super rápido e confiável
     const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
     avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
 
@@ -271,7 +269,6 @@ window.gerarECompartilharCard = async function() {
         let subText = isTv ? "SÉRIE" : "FILME";
         
         if (isTv) {
-            // Pega os valores e garante o "0" na frente (Ex: 1 vira 01)
             const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
             const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
             
@@ -284,15 +281,19 @@ window.gerarECompartilharCard = async function() {
         tituloCap.textContent = selectedTMDBMedia.titulo;
         subCap.textContent = subText;
 
+        // Formato para Cinema (Retrato)
         posterWrap.style.display = "block";
+        posterWrap.style.width = "240px"; 
+        posterCap.style.aspectRatio = "2/3"; 
+        
         bgImg.style.display = "block";
         bgNoise.style.opacity = "0.5"; 
-        
         bgImg.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.backdrop)}`;
         posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
 
     } else {
         const txtLivre = document.getElementById("livre-title-input").value.trim();
+        const urlLivre = document.getElementById("livre-url-input").value.trim();
         if (!txtLivre) return alert("Digite o que vocês assistiram!");
         aviso.classList.remove("hidden");
 
@@ -300,18 +301,39 @@ window.gerarECompartilharCard = async function() {
         subCap.textContent = "NOSSO ESPAÇO";
         textoTweet = `Acabei de assistir ${txtLivre}!`;
 
-        posterWrap.style.display = "none";
-        bgImg.style.display = "none";
-        bgNoise.style.opacity = "1";
+        // Inteligência para extrair a thumbnail do Youtube!
+        const extrairIdYoutube = (url) => {
+            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+            return (match && match[2].length === 11) ? match[2] : null;
+        };
+        const ytId = extrairIdYoutube(urlLivre);
+
+        if (ytId) {
+            // Se achou link do YouTube, ele muda o formato do card para 16:9 de TV
+            const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`)}`;
+            
+            posterWrap.style.display = "block";
+            posterWrap.style.width = "320px"; // Mais largo para encaixar vídeo do YT
+            posterCap.style.aspectRatio = "16/9"; 
+            
+            bgImg.style.display = "block";
+            bgNoise.style.opacity = "0.5"; 
+            bgImg.src = ytThumb;
+            posterCap.src = ytThumb;
+        } else {
+            // Sem YouTube, apenas fundo escuro estiloso
+            posterWrap.style.display = "none";
+            bgImg.style.display = "none";
+            bgNoise.style.opacity = "1";
+        }
     }
 
     try {
-        // A mágica anti-travamento: Espera exatamente as imagens carregarem
-        await Promise.all([
-            esperarImagem(avatar),
-            esperarImagem(bgImg),
-            esperarImagem(posterCap)
-        ]);
+        // Pausa apenas se existir imagem para aguardar
+        const promessas = [esperarImagem(avatar)];
+        if(bgImg.style.display !== "none") promessas.push(esperarImagem(bgImg));
+        if(posterWrap.style.display !== "none") promessas.push(esperarImagem(posterCap));
+        await Promise.all(promessas);
 
         const promiseBlob = new Promise(async (resolve, reject) => {
             try {
@@ -324,7 +346,6 @@ window.gerarECompartilharCard = async function() {
             } catch (e) { reject(e); }
         });
 
-        // Passa a promessa direto pro Clipboard pra não cair no bloqueio de tempo
         const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
         await navigator.clipboard.write([clipboardItem]);
         
@@ -431,9 +452,6 @@ function carregarMensagens() {
     });
 }
 
-/* ─────────────────────────────────────────
-   FUNDO ANIMADO INFINITO
-───────────────────────────────────────── */
 const fotosDeFundo = [
     "https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0",
     "https://lh3.googleusercontent.com/pw/AP1GczNm-4vUYJvI93aikfdouiDN-gxmI-aF0wyGf1XfvwKnNOqkiAdZca1MlHTK_k8EiYd9coqrlB_ssp0jiTHhpXXKA94NzIGf8gvK54weLB6KEhhWcS35ZNAUtbB_IEnoGCd_yLT__hi0kd-MYo_2W5cS=w683-h911-s-no-gm?authuser=0",
