@@ -207,16 +207,21 @@ function mostrarResultadosTMDB(results) {
     validos.forEach(item => {
         const titulo = item.title || item.name; const ano = (item.release_date || item.first_air_date || "N/A").substring(0,4);
         const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : "https://via.placeholder.com/32x48/111/fff?text=Capa";
+        
+        // CORREÇÃO AQUI: Capta também a imagem "backdrop" (horizontal) para usar de fundo!
+        const backdropUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w1280${item.poster_path}` : poster);
+        const highResPoster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : poster;
+
         const div = document.createElement("div"); div.className = "tmdb-result-item";
         div.innerHTML = `<img src="${poster}" class="tmdb-result-poster"><div class="tmdb-result-text"><strong>${titulo}</strong><span style="font-size:11px;color:gray;">${item.media_type==='movie'?'🎬 Filme':'📺 Série'} • ${ano}</span></div>`;
-        div.onclick = () => selecionarTMDB(item, titulo, item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : poster);
+        div.onclick = () => selecionarTMDB(item, titulo, highResPoster, backdropUrl);
         resBox.appendChild(div);
     });
     resBox.classList.remove("hidden");
 }
 
-window.selecionarTMDB = function(item, titulo, posterUrlHighRes) {
-    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes };
+window.selecionarTMDB = function(item, titulo, posterUrlHighRes, backdropUrl) {
+    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes, backdrop: backdropUrl };
     document.getElementById("tmdb-search-results").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.add("hidden");
     document.getElementById("tmdb-selected").classList.remove("hidden"); document.getElementById("tmdb-selected-poster").src = `https://image.tmdb.org/t/p/w92${item.poster_path}`; document.getElementById("tmdb-selected-title").textContent = titulo;
     if (item.media_type === 'tv') document.getElementById("tmdb-tv-inputs").classList.remove("hidden"); else document.getElementById("tmdb-tv-inputs").classList.add("hidden");
@@ -232,7 +237,6 @@ function exibirNotificacaoCopia() {
     box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
 }
 
-// CORREÇÃO: Função Mágica atualizada com o Proxy de Imagem e API assíncrona
 window.gerarECompartilharCard = async function() {
     const aviso = document.getElementById("gerando-aviso");
     const tituloCap = document.getElementById("cap-title");
@@ -247,13 +251,11 @@ window.gerarECompartilharCard = async function() {
     let nota = document.getElementById("share-rating").value || "S/N";
     ratingCap.textContent = nota;
 
-    // CORREÇÃO 1: Usa um "Proxy" gratuito para a foto de perfil não bloquear a segurança do navegador
     const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
     avatar.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(fotoOriginal)}`;
 
     let textoTweet = "";
 
-    // MODO TMDB
     if (modoShareAtual === 'tmdb') {
         if (!selectedTMDBMedia) return alert("Selecione um filme ou série primeiro!");
         aviso.classList.remove("hidden");
@@ -276,11 +278,11 @@ window.gerarECompartilharCard = async function() {
         posterWrap.style.display = "block";
         bgImg.style.display = "block";
         bgNoise.style.opacity = "0.5"; 
-        bgImg.src = selectedTMDBMedia.highResPoster;
+        // AQUI ESTÁ A MÁGICA: O fundo agora puxa o Backdrop (A imagem horizontal 16:9 limpa do TMDB)
+        bgImg.src = selectedTMDBMedia.backdrop; 
         posterCap.src = selectedTMDBMedia.highResPoster;
 
     } else {
-        // MODO LIVRE
         const txtLivre = document.getElementById("livre-title-input").value.trim();
         if (!txtLivre) return alert("Digite o que vocês assistiram!");
         aviso.classList.remove("hidden");
@@ -294,12 +296,10 @@ window.gerarECompartilharCard = async function() {
         bgNoise.style.opacity = "1";
     }
 
-    // CORREÇÃO 2: Cria a cópia assíncrona oficial do navegador para não ser bloqueada
     try {
         const promiseBlob = new Promise(async (resolve, reject) => {
             try {
                 const cardElement = document.getElementById("capture-container");
-                // Pausa minúscula apenas para o HTML renderizar o texto recém-adicionado
                 await new Promise(r => setTimeout(r, 150)); 
                 const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10' });
                 canvas.toBlob((blob) => {
@@ -309,13 +309,11 @@ window.gerarECompartilharCard = async function() {
             } catch (e) { reject(e); }
         });
 
-        // Grava no Clipboard usando o formato Promise nativo
         const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
         await navigator.clipboard.write([clipboardItem]);
         
         exibirNotificacaoCopia();
         
-        // Abre o X na mesma hora
         setTimeout(() => {
             window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
         }, 300);
@@ -330,7 +328,7 @@ window.gerarECompartilharCard = async function() {
 };
 
 /* ─────────────────────────────────────────
-   TELA CHEIA, ARRASTE DO CHAT E MENSAGENS (MANTIDOS IGUAIS E OTIMIZADOS)
+   TELA CHEIA, ARRASTE DO CHAT E MENSAGENS
 ───────────────────────────────────────── */
 window.toggleFullScreen = function() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err=>err); else document.exitFullscreen(); };
 window.mudarTransparencia = function(valor) { document.documentElement.style.setProperty('--bg-alpha', valor); };
@@ -417,5 +415,23 @@ function carregarMensagens() {
     });
 }
 
-function inicializarSliderFundo() { const t = document.getElementById("slider-track"); if(t) { let imgs = ["https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0"].map(url => `<img src="${url}">`).join(''); t.innerHTML = imgs + imgs; } }
+/* ─────────────────────────────────────────
+   FUNDO ANIMADO INFINITO DA TELA DE LOGIN
+───────────────────────────────────────── */
+// Cole aqui os seus 5 links do Google Drive!
+const fotosDeFundo = [
+    "SUA_FOTO_1_AQUI",
+    "SUA_FOTO_2_AQUI",
+    "SUA_FOTO_3_AQUI",
+    "SUA_FOTO_4_AQUI",
+    "SUA_FOTO_5_AQUI"
+];
+
+function inicializarSliderFundo() { 
+    const track = document.getElementById("slider-track"); 
+    if(track && fotosDeFundo.length > 0) { 
+        let imagensHtml = fotosDeFundo.map(url => `<img src="${url}">`).join(''); 
+        track.innerHTML = imagensHtml + imagensHtml; 
+    } 
+}
 inicializarSliderFundo();
