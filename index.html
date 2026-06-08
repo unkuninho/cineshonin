@@ -1,312 +1,530 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nosso Espaço</title>
-    
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, deleteDoc, updateDoc, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    <style>
-        :root { --bg-alpha: 0.75; }
-        *, *::before, *::after { box-sizing: border-box; }
+const firebaseConfig = {
+  apiKey: "AIzaSyD4ng6qnK6dZ4U2WKcxu5bEaBJRhVnw0YM",
+  authDomain: "createseriesapp.firebaseapp.com",
+  projectId: "createseriesapp",
+  messagingSenderId: "512877437886",
+  appId: "1:512877437886:web:439e98036a281ac5ed8fef"
+};
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0c10; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: white; }
-        .hidden { display: none !important; }
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; position: relative; background-color: #0b0c10; }
-        .slider-wrapper { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
-        .slider-track { display: flex; height: 100%; width: max-content; animation: slide 40s linear infinite; }
-        .slider-track img { height: 100%; width: auto; object-fit: cover; }
-        @keyframes slide { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        #login-screen::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 12, 16, 0.4) 0%, rgba(11, 12, 16, 0.95) 100%); z-index: 1; }
-        .login-title, .login-subtitle, .login-cards { position: relative; z-index: 2; }
-        .login-title { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; color: white; }
-        .login-subtitle { font-size: 15px; color: rgba(255,255,255,0.35); margin-bottom: 64px; }
-        .login-cards { display: flex; gap: 48px; }
-        .login-card { display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer; transition: transform 0.2s; }
-        .login-card:hover { transform: translateY(-8px); }
-        .login-card-photo { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.12); transition: border-color 0.2s, box-shadow 0.2s; display: block; }
-        .login-card:hover .login-card-photo { border-color: rgba(88, 101, 242, 0.7); box-shadow: 0 0 0 6px rgba(88, 101, 242, 0.15); }
-        .login-card-name { margin-top: 20px; font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.85); }
-        .login-card-hint { margin-top: 5px; font-size: 13px; color: rgba(255,255,255,0.3); }
+let usuarioAtual = "";
+let cropperInstance = null; 
+let nomeTemporarioUpload = ""; 
+let respondendoA = null; 
 
-        #room-screen { position: relative; width: 100vw; height: 100vh; }
-        #video-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: black; position: relative; }
-        #screen-video { width: 100%; height: 100%; object-fit: contain; }
-        #sem-transmissao { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: rgba(255,255,255,0.2); font-size: 14px; }
+const avatares = {
+    "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
+    "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
+};
 
-        #left-panel-wrapper { position: absolute; top: 20px; left: 0; z-index: 20; display: flex; align-items: flex-start; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        #left-panel-wrapper.minimized { transform: translateX(calc(-100% + 24px)); }
-        #left-panel-content { background: rgba(12, 12, 16, var(--bg-alpha)); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); border-left: none; border-radius: 0 20px 20px 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 12px 0 30px rgba(0,0,0,0.5); min-width: 320px; }
-        #btn-toggle-left-panel { width: 24px; height: 48px; background: rgba(12, 12, 16, 0.85); border: 1px solid rgba(255,255,255,0.07); border-left: none; border-radius: 0 8px 8px 0; color: rgba(255,255,255,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 14px; transition: 0.2s; }
-        #btn-toggle-left-panel:hover { color: white; background: rgba(255,255,255,0.1); }
-        #left-panel-wrapper.minimized #btn-toggle-left-panel svg { transform: rotate(180deg); }
-        .top-controls { display: flex; align-items: center; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); }
-        #user-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.08); padding: 4px 10px 4px 4px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); }
-        #badge-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
-        #presence-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.4); margin-right: auto; }
-        .presence-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background 0.4s; }
-        .presence-dot.online  { background: #3ba55c; box-shadow: 0 0 0 2px rgba(59,165,92,0.2); }
-        .presence-dot.offline { background: #ed4245; box-shadow: 0 0 0 2px rgba(237,66,69,0.15); }
-        .btn-top { background: transparent; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; padding: 6px; border-radius: 8px; transition: 0.2s; color: rgba(255,255,255,0.55); display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; }
-        .btn-top:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.16); color: white; }
-        .btn-top.danger:hover { background: rgba(237,66,69,0.15); border-color: rgba(237,66,69,0.3); color: #ed4245; }
-        .transparency-wrap { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 4px 8px; }
-        #transparency-slider { width: 56px; cursor: pointer; -webkit-appearance: none; height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px; }
-        #transparency-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #5865F2; }
-        #local-preview { width: 100%; height: 160px; object-fit: contain; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: #111; }
-        .btn-share { display: flex; align-items: center; justify-content: center; gap: 7px; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; width: 100%; font-size: 13px; cursor: pointer; font-weight: 500; transition: 0.2s; }
-        .btn-share:hover { background: rgba(255,255,255,0.09); color: white; border-color: rgba(255,255,255,0.14); }
-        .btn-share.transmitindo { background: rgba(237,66,69,0.12); border-color: rgba(237,66,69,0.3); color: #ed4245; }
+/* ─────────────────────────────────────────
+   WebRTC (Vídeo)
+───────────────────────────────────────── */
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const SALA_ID = "sala-principal";
+let peerConnection = null;
+let localStream = null;
 
-        #overlay-panel { position: absolute; bottom: 20px; right: 20px; width: 370px; background: rgba(12, 12, 16, var(--bg-alpha)); backdrop-filter: blur(20px); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 10px; z-index: 10; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 12px 40px rgba(0,0,0,0.5); transition: background 0.1s ease; }
-        #drag-handle { width: 100%; height: 16px; display: flex; justify-content: center; align-items: center; cursor: grab; margin-top: -6px; margin-bottom: -2px; opacity: 0.5; transition: 0.2s; }
-        #drag-handle:active { cursor: grabbing; }
-        #chat-box { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; max-height: 45vh; overflow-y: auto; padding-right: 4px; }
-        #chat-box::-webkit-scrollbar { width: 4px; }
-        #chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
-        .msg-separador { text-align: center; font-size: 10px; color: rgba(255,255,255,0.4); margin: 2px 0 1px; }
-        .message-row { display: flex; width: 100%; align-items: flex-end; position: relative; animation: msgIn 0.18s ease; }
-        @keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        .message-row.own { justify-content: flex-end; }
-        .message-row.other { justify-content: flex-start; }
-        .avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1); }
-        .message-row.own .avatar { margin-left: 6px; }
-        .message-row.other .avatar { margin-right: 6px; }
-        .msg-col { display: flex; flex-direction: column; max-width: 78%; }
-        .col-own { align-items: flex-end; }
-        .col-other { align-items: flex-start; }
-        .message-author-above { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 2px; padding-left: 2px; }
-        .message-bubble { padding: 7px 11px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-wrap: break-word; position: relative; }
-        .message-row.own .message-bubble { background: rgba(88,101,242,0.75); color: #fff; border-bottom-right-radius: 4px; backdrop-filter: blur(4px); }
-        .message-row.other .message-bubble { background: rgba(30,31,36,0.8); color: #e8e8e8; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(4px); }
-        .message-bubble.is-sticker { background: transparent !important; padding: 0; box-shadow: none; border: none; }
-        .sticker-img { max-width: 110px; max-height: 110px; object-fit: contain; border-radius: 8px; cursor: pointer; }
-        .msg-editado { font-size: 10px; color: rgba(255,255,255,0.4); font-style: italic; }
-        .reply-block { background: rgba(0,0,0,0.25); border-left: 3px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; font-size: 11px; color: rgba(255,255,255,0.8); }
-        .reply-block strong { color: rgba(255,255,255,0.9); display: block; margin-bottom: 2px;}
-        .msg-status { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: bottom; position: relative; top: 3px; }
-        .msg-status svg { width: 14px; height: 14px; }
-        .msg-actions { display: none; position: absolute; top: -22px; right: 8px; background: #1e1f24; border-radius: 7px; padding: 3px 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); z-index: 100; border: 1px solid rgba(255,255,255,0.08); }
-        .message-row.other .msg-actions { right: auto; left: 8px; }
-        .message-row:hover .msg-actions { display: flex; gap: 2px; }
-        .btn-action { background: none; border: none; cursor: pointer; padding: 4px 5px; color: rgba(255,255,255,0.65); display: flex; align-items: center; }
-        .btn-action:hover { background: rgba(255,255,255,0.1); color: white; transform: scale(1.1); }
-        #reply-preview-container { display: flex; justify-content: space-between; align-items: center; background: rgba(12, 12, 16, 0.9); border-left: 3px solid #5865F2; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
-        .reply-preview-content { display: flex; flex-direction: column; overflow: hidden; }
-        #reply-preview-author { font-size: 11px; font-weight: 600; color: #5865F2; margin-bottom: 2px;}
-        #reply-preview-text { font-size: 12px; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
-        .btn-cancel-reply { background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;}
+function refChamada()          { return doc(db, "chamada", SALA_ID); }
+function refOfferCandidates()  { return collection(db, "chamada", SALA_ID, "offerCandidates"); }
+function refAnswerCandidates() { return collection(db, "chamada", SALA_ID, "answerCandidates"); }
+
+window.iniciarCompartilhamento = async function() {
+    const btnShare = document.getElementById("btn-share");
+    if (localStream) { pararTransmissao(); return; }
+    try { localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
+    } catch (erro) { return; }
+
+    document.getElementById("screen-video").srcObject = localStream; document.getElementById("screen-video").classList.remove("hidden");
+    document.getElementById("sem-transmissao").classList.add("hidden");
+    document.getElementById("local-preview").srcObject = localStream; document.getElementById("local-preview").classList.remove("hidden");
+    btnShare.classList.add("transmitindo"); btnShare.innerHTML = `Parar transmissão`;
+
+    const oldOffers = await getDocs(refOfferCandidates()); oldOffers.forEach(d => deleteDoc(d.ref));
+    const oldAnswers = await getDocs(refAnswerCandidates()); oldAnswers.forEach(d => deleteDoc(d.ref));
+
+    peerConnection = new RTCPeerConnection(rtcConfig);
+    let answerCandidatesQueue = []; 
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    peerConnection.onicecandidate = (event) => { if (event.candidate) addDoc(refOfferCandidates(), event.candidate.toJSON()); };
+    localStream.getVideoTracks()[0].onended = () => pararTransmissao();
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    await setDoc(refChamada(), { offer: { type: offer.type, sdp: offer.sdp }, answer: null });
+
+    onSnapshot(refChamada(), async (snap) => {
+        const dados = snap.data();
+        if (dados?.answer && peerConnection && !peerConnection.currentRemoteDescription && peerConnection.signalingState === "have-local-offer") { 
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
+            answerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e=>e));
+            answerCandidatesQueue = [];
+        }
+    });
+
+    onSnapshot(refAnswerCandidates(), (snap) => {
+        snap.docChanges().forEach((change) => {
+            if (change.type === "added" && peerConnection) {
+                const candidate = new RTCIceCandidate(change.doc.data());
+                if (peerConnection.remoteDescription) peerConnection.addIceCandidate(candidate).catch(e=>e);
+                else answerCandidatesQueue.push(candidate);
+            }
+        });
+    });
+};
+
+function pararTransmissao() {
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    document.getElementById("local-preview").srcObject = null; document.getElementById("local-preview").classList.add("hidden");
+    document.getElementById("screen-video").srcObject = null; document.getElementById("screen-video").classList.add("hidden");
+    document.getElementById("sem-transmissao").classList.remove("hidden");
+    const btnShare = document.getElementById("btn-share"); btnShare.classList.remove("transmitindo"); btnShare.innerHTML = `Compartilhar tela`;
+    setDoc(refChamada(), { offer: null, answer: null });
+}
+
+async function entrarComoEspectadora() {
+    onSnapshot(refChamada(), async (snap) => {
+        const dados = snap.data();
+        if (!dados?.offer) {
+            if (peerConnection) { peerConnection.close(); peerConnection = null; document.getElementById("screen-video").srcObject = null; document.getElementById("screen-video").classList.add("hidden"); document.getElementById("sem-transmissao").classList.remove("hidden"); }
+            return;
+        }
+        if (peerConnection) return;
         
-        emoji-picker { position: absolute; bottom: 65px; right: 15px; z-index: 100; height: 320px; --background: #1e1f24; border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
-        #sticker-picker { position: absolute; bottom: 65px; right: 15px; width: 310px; height: 310px; background: #1e1f24; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
-        .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.65); }
-        .btn-add-sticker { background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; }
-        #sticker-grid { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; align-content: flex-start; flex-grow: 1; }
-        #sticker-grid::-webkit-scrollbar { width: 4px; }
-        #sticker-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
-        .sticker-wrapper { position: relative; width: 66px; height: 66px; }
-        .sticker-item { width: 66px; height: 66px; object-fit: cover; border-radius: 10px; cursor: pointer; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); }
-        .sticker-del-btn { display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; background: #ed4245; border: none; cursor: pointer; align-items: center; justify-content: center; padding: 0; z-index: 2; }
-        .sticker-wrapper:hover .sticker-del-btn { display: flex; }
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        let offerCandidatesQueue = []; 
+        peerConnection.ontrack = (event) => { document.getElementById("screen-video").srcObject = event.streams[0]; document.getElementById("screen-video").classList.remove("hidden"); document.getElementById("sem-transmissao").classList.add("hidden"); };
+        peerConnection.onicecandidate = (event) => { if (event.candidate) addDoc(refAnswerCandidates(), event.candidate.toJSON()); };
 
-        .input-group { display: flex; gap: 6px; align-items: center; transition: 0.2s; }
-        .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); }
-        .btn-icon:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); }
-        input[type="text"], input[type="number"] { flex-grow: 1; padding: 9px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.06); color: white; outline: none; font-size: 13.5px; transition: 0.2s; min-width: 0; }
-        input[type="text"]:focus, input[type="number"]:focus { border-color: rgba(88,101,242,0.55); background: rgba(255,255,255,0.08); }
-        .btn-enviar { padding: 0 14px; height: 36px; border-radius: 10px; background: #5865F2; color: white; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+        onSnapshot(refOfferCandidates(), (snapCand) => {
+            snapCand.docChanges().forEach((change) => {
+                if (change.type === "added" && peerConnection) {
+                    const candidate = new RTCIceCandidate(change.doc.data());
+                    if (peerConnection.remoteDescription) peerConnection.addIceCandidate(candidate).catch(e=>e);
+                    else offerCandidatesQueue.push(candidate);
+                }
+            });
+        });
 
-        body.fullscreen-active #overlay-panel { background: transparent !important; backdrop-filter: none !important; border: none !important; box-shadow: none !important; }
-        body.fullscreen-active #drag-handle { opacity: 0.15; }
-        body.fullscreen-active .input-group { background: rgba(12, 12, 16, 0.85); padding: 8px; border-radius: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.offer));
+        offerCandidatesQueue.forEach(c => peerConnection.addIceCandidate(c).catch(e=>e)); offerCandidatesQueue = [];
+        const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
+        await updateDoc(refChamada(), { answer: { type: answer.type, sdp: answer.sdp } });
+    });
+}
 
-        .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .custom-modal { background: #1e1f24; padding: 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 340px; display: flex; flex-direction: column; gap: 16px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .custom-modal h3 { margin: 0; font-size: 18px; font-weight: 600; }
-        .modal-buttons-row { display: flex; gap: 10px; }
-        .modal-btn { flex: 1; padding: 10px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; color: white; transition: 0.2s; }
-        .modal-btn.primary { background: #5865F2; }
-        .modal-btn.secondary { background: rgba(255,255,255,0.1); }
-        .modal-btn.success { background: #3ba55c; }
-        .modal-btn.danger { background: #ed4245; }
+/* ─────────────────────────────────────────
+   SALA / PRESENÇA / PERFIL
+───────────────────────────────────────── */
+async function marcarPresenca(nome, online) { await setDoc(doc(db, "presenca", nome), { online: online, ultimaVez: serverTimestamp() }); }
+function ouvirPresenca() {
+    const outro = usuarioAtual === "Kunin" ? "Shirlei" : "Kunin";
+    onSnapshot(doc(db, "presenca", outro), (snap) => {
+        const dados = snap.data();
+        if (!dados) return;
+        document.getElementById("presence-dot").className = dados.online ? "presence-dot online" : "presence-dot offline";
+        document.getElementById("presence-label").textContent = outro + (dados.online ? " online" : " offline");
+    });
+}
 
-        .cropper-modal { width: 90%; max-width: 450px; }
-        .img-container { width: 100%; max-height: 350px; background: #0b0c10; border-radius: 12px; overflow: hidden; }
-        .img-container img { display: block; max-width: 100%; }
+window.entrarNaSala = function(nome) {
+    usuarioAtual = nome;
+    if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
+    document.getElementById("login-screen").classList.add("hidden"); document.getElementById("room-screen").classList.remove("hidden");
+    atualizarBadgeUsuario();
+    if (nome === "Kunin") document.getElementById("btn-share").classList.remove("hidden"); else entrarComoEspectadora();
+    marcarPresenca(nome, true);
+    window.addEventListener("beforeunload", () => { marcarPresenca(usuarioAtual, false); if (usuarioAtual === "Kunin") pararTransmissao(); });
+    document.addEventListener("visibilitychange", () => { marcarPresenca(usuarioAtual, !document.hidden); });
+    ouvirPresenca(); carregarMensagens(); carregarGavetaFigurinhas();
+    document.getElementById("message-input").addEventListener("keypress", function(e) { if (e.key === "Enter") { enviarMensagem(); esconderPaineis(); } });
+};
 
-        /* MODAL TMDB / SHARE */
-        .tmdb-modal { width: 380px; }
-        .tmdb-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
-        .tmdb-tab { flex: 1; padding: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; transition: 0.2s; }
-        .tmdb-tab.active { color: white; border-bottom-color: #5865F2; }
+function atualizarBadgeUsuario() { document.getElementById("user-badge-name").textContent = usuarioAtual; document.getElementById("badge-avatar").src = avatares[usuarioAtual] || ""; }
+window.abrirModalPerfil = function() { document.getElementById("edit-name-input").value = usuarioAtual; document.getElementById("modal-edit-profile").classList.remove("hidden"); };
+window.fecharModalPerfil = function() { document.getElementById("modal-edit-profile").classList.add("hidden"); };
+window.escolherFotoLink = function() { const n = document.getElementById("edit-name-input").value.trim(); if(!n) return; const f = prompt("URL da imagem:"); if (f) { aplicarNovoPerfil(n, f.trim()); fecharModalPerfil(); } };
+window.escolherFotoGaleria = function() { const n = document.getElementById("edit-name-input").value.trim(); if(!n) return; nomeTemporarioUpload = n; document.getElementById("profile-upload").click(); };
+window.iniciarCorteDeFoto = function(event) {
+    const file = event.target.files[0]; if (!file) return; event.target.value = '';
+    const reader = new FileReader();
+    reader.onloadend = function() { fecharModalPerfil(); const img = document.getElementById("image-to-crop"); img.src = reader.result; document.getElementById("modal-cropper").classList.remove("hidden"); if (cropperInstance) cropperInstance.destroy(); setTimeout(() => { cropperInstance = new Cropper(img, { aspectRatio: 1, viewMode: 1, background: false }); }, 100); };
+    reader.readAsDataURL(file);
+};
+window.fecharModalCropper = function() { document.getElementById("modal-cropper").classList.add("hidden"); if(cropperInstance) cropperInstance.destroy(); };
+window.salvarFotoCortada = function() { if (!cropperInstance) return; const canvas = cropperInstance.getCroppedCanvas({ width: 300, height: 300 }); aplicarNovoPerfil(nomeTemporarioUpload, canvas.toDataURL('image/webp', 0.85)); fecharModalCropper(); };
+function aplicarNovoPerfil(novoNome, novaFoto) { setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() }); usuarioAtual = novoNome; avatares[usuarioAtual] = novaFoto; atualizarBadgeUsuario(); marcarPresenca(usuarioAtual, true); carregarMensagens(); }
+
+/* ─────────────────────────────────────────
+   GERAÇÃO DE CARD (TMDB & LIVRE YOUTUBE)
+───────────────────────────────────────── */
+const TMDB_API_KEY = "72c510d429567c89261f7a37b8ef9a0b";
+let debounceTimer;
+let selectedTMDBMedia = null;
+let modoShareAtual = 'tmdb';
+
+window.abrirCompartilhamento = function() {
+    document.getElementById("modal-share").classList.remove("hidden");
+    mudarModoShare('tmdb');
+};
+
+window.fecharModalShare = function() { document.getElementById("modal-share").classList.add("hidden"); };
+
+window.mudarModoShare = function(modo) {
+    modoShareAtual = modo;
+    if(modo === 'tmdb') {
+        document.getElementById("tab-tmdb").classList.add("active");
+        document.getElementById("tab-livre").classList.remove("active");
+        document.getElementById("share-tmdb-view").classList.remove("hidden");
+        document.getElementById("share-livre-view").classList.add("hidden");
+        limparSelecaoTMDB();
+    } else {
+        document.getElementById("tab-livre").classList.add("active");
+        document.getElementById("tab-tmdb").classList.remove("active");
+        document.getElementById("share-livre-view").classList.remove("hidden");
+        document.getElementById("share-tmdb-view").classList.add("hidden");
+    }
+};
+
+// NOVO: Espião do YouTube para pegar o nome automático
+document.getElementById("livre-url-input").addEventListener("input", async (e) => {
+    const url = e.target.value.trim();
+    const inputTitulo = document.getElementById("livre-title-input");
+    
+    if (url.includes("youtube.com") || url.includes("youtu.be")) {
+        inputTitulo.value = "Buscando título...";
+        try {
+            // API pública para ler informações de sites sem dar erro de segurança
+            const res = await fetch(`https://noembed.com/embed?dataType=json&url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (data.title) {
+                inputTitulo.value = data.title;
+            } else {
+                inputTitulo.value = "";
+            }
+        } catch (err) {
+            inputTitulo.value = "";
+        }
+    }
+});
+
+document.getElementById("tmdb-search-input").addEventListener("input", (e) => {
+    clearTimeout(debounceTimer); const q = e.target.value.trim(); const resBox = document.getElementById("tmdb-search-results");
+    if (q.length < 2) { resBox.classList.add("hidden"); return; }
+    debounceTimer = setTimeout(async () => {
+        try { const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(q)}`); const data = await res.json(); mostrarResultadosTMDB(data.results); } catch (err) {}
+    }, 400);
+});
+
+function mostrarResultadosTMDB(results) {
+    const resBox = document.getElementById("tmdb-search-results"); resBox.innerHTML = "";
+    const validos = results.filter(r => r.media_type === 'movie' || r.media_type === 'tv').slice(0, 5);
+    if (validos.length === 0) { resBox.innerHTML = `<div style="padding:10px; font-size:12px; color:gray; text-align:center;">Sem resultados.</div>`; resBox.classList.remove("hidden"); return; }
+    validos.forEach(item => {
+        const titulo = item.title || item.name; const ano = (item.release_date || item.first_air_date || "N/A").substring(0,4);
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : "https://via.placeholder.com/32x48/111/fff?text=Capa";
         
-        .tmdb-search-box { position: relative; width: 100%; text-align: left; }
-        #tmdb-search-results { position: absolute; top: 100%; left: 0; right: 0; background: #1e1f24; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-top: 4px; max-height: 200px; overflow-y: auto; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .tmdb-result-item { display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .tmdb-result-item:hover { background: rgba(255,255,255,0.1); }
-        .tmdb-result-poster { width: 32px; height: 48px; border-radius: 4px; object-fit: cover; background: #111; border: 1px solid rgba(255,255,255,0.05); }
-        .tmdb-result-text { display: flex; flex-direction: column; font-size: 13px; color: rgba(255,255,255,0.9); }
-        .tmdb-selected-info { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 12px; margin-bottom: 10px; text-align: left; border: 1px solid rgba(255,255,255,0.05);}
-        #tmdb-selected-poster { width: 40px; height: 60px; border-radius: 4px; object-fit: cover; }
-        #tmdb-selected-title { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.3;}
+        const backdropUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w1280${item.poster_path}` : poster);
+        const highResPoster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : poster;
 
-        #copia-aviso { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #3ba55c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 10000; animation: fadeOut 3s forwards; }
-        @keyframes fadeOut { 0% { opacity: 0; transform: translate(-50%, 10px); } 10% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; display: none; } }
-    </style>
-</head>
-<body>
+        const div = document.createElement("div"); div.className = "tmdb-result-item";
+        div.innerHTML = `<img src="${poster}" class="tmdb-result-poster"><div class="tmdb-result-text"><strong>${titulo}</strong><span style="font-size:11px;color:gray;">${item.media_type==='movie'?'🎬 Filme':'📺 Série'} • ${ano}</span></div>`;
+        div.onclick = () => selecionarTMDB(item, titulo, highResPoster, backdropUrl);
+        resBox.appendChild(div);
+    });
+    resBox.classList.remove("hidden");
+}
 
-    <div id="login-screen">
-        <div class="slider-wrapper"><div class="slider-track" id="slider-track"></div></div>
-        <h1 class="login-title">Nosso Espaço</h1>
-        <p class="login-subtitle">quem é você hoje?</p>
-        <div class="login-cards">
-            <div class="login-card" onclick="entrarNaSala('Kunin')">
-                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
-                <span class="login-card-name">Kunin</span><span class="login-card-hint">entrar</span>
-            </div>
-            <div class="login-card" onclick="entrarNaSala('Shirlei')">
-                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
-                <span class="login-card-name">Shirlei</span><span class="login-card-hint">entrar</span>
-            </div>
-        </div>
-    </div>
+window.selecionarTMDB = function(item, titulo, posterUrlHighRes, backdropUrl) {
+    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes, backdrop: backdropUrl };
+    document.getElementById("tmdb-search-results").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.add("hidden");
+    document.getElementById("tmdb-selected").classList.remove("hidden"); document.getElementById("tmdb-selected-poster").src = `https://image.tmdb.org/t/p/w92${item.poster_path}`; document.getElementById("tmdb-selected-title").textContent = titulo;
+    if (item.media_type === 'tv') document.getElementById("tmdb-tv-inputs").classList.remove("hidden"); else document.getElementById("tmdb-tv-inputs").classList.add("hidden");
+};
 
-    <div id="room-screen" class="hidden">
-        <div id="video-container">
-            <video id="screen-video" autoplay playsinline class="hidden"></video>
-            <div id="sem-transmissao">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="white" stroke-width="1.5"><rect x="4" y="8" width="40" height="28" rx="3"/><path d="M16 44h16M24 36v8"/></svg>
-                <span>aguardando transmissão...</span>
-            </div>
-        </div>
+window.limparSelecaoTMDB = function() {
+    selectedTMDBMedia = null; document.getElementById("tmdb-selected").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.remove("hidden"); document.getElementById("tmdb-search-input").value = "";
+    document.getElementById("tmdb-season").value = ""; document.getElementById("tmdb-episode").value = ""; document.getElementById("share-rating").value = "";
+};
 
-        <div id="left-panel-wrapper">
-            <div id="left-panel-content">
-                <div class="top-controls">
-                    <span id="user-badge"><img id="badge-avatar" src=""><span id="user-badge-name">—</span></span>
-                    <button class="btn-top" onclick="abrirModalPerfil()" title="Editar Perfil"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2L12 4.5M10.5 1.5a2.12 2.12 0 013 3L4 14H1v-3L10.5 1.5z"/></svg></button>
-                    <input type="file" id="profile-upload" accept="image/*" class="hidden" onchange="iniciarCorteDeFoto(event)">
-                    <div id="presence-badge"><span class="presence-dot offline" id="presence-dot"></span><span id="presence-label">—</span></div>
-                    <div style="flex:1"></div>
-                    <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar no X (Twitter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
-                    <button class="btn-top" onclick="toggleFullScreen()" title="Tela cheia"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg></button>
-                    <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar histórico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h10M5 4V2.5h4V4M4.5 4v7h5V4"/><line x1="6" y1="6.5" x2="6" y2="9.5"/><line x1="8" y1="6.5" x2="8" y2="9.5"/></svg></button>
-                    <div class="transparency-wrap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M5 1v8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M1 5a4 4 0 014-4v8a4 4 0 01-4-4z" fill="rgba(255,255,255,0.35)"/></svg><input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)"></div>
-                </div>
-                <video id="local-preview" autoplay playsinline muted class="hidden"></video>
-                <button id="btn-share" class="btn-share hidden" onclick="iniciarCompartilhamento()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5"/><path d="M4 13h6M7 11v2"/></svg>Compartilhar tela</button>
-            </div>
-            <button id="btn-toggle-left-panel" onclick="toggleLeftPanel()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg></button>
-        </div>
+function exibirNotificacaoCopia() {
+    const box = document.getElementById("aviso-container");
+    box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
+}
 
-        <div id="overlay-panel">
-            <div id="drag-handle"><svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="3" r="1"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="3" r="1"/><circle cx="15" cy="9" r="1"/></svg></div>
-            <div id="chat-box"></div>
-            <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
-            <div id="sticker-picker" class="hidden">
-                <div class="sticker-header"><span>Gaveta de Figurinhas</span><button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Adicionar</button><input type="file" id="sticker-upload" accept="image/*" class="hidden" onchange="salvarNovaFigurinha(event)"></div>
-                <div id="sticker-grid"></div>
-            </div>
-            <div id="reply-preview-container" class="hidden">
-                <div class="reply-preview-content"><span id="reply-preview-author">Nome</span><span id="reply-preview-text">Texto...</span></div>
-                <button onclick="cancelarResposta()" class="btn-cancel-reply"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-            </div>
-            <div class="input-group">
-                <button class="btn-icon" onclick="toggleEmojiPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="9" r="7.5"/><circle cx="6.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><path d="M6 11.5c.8 1.2 5.2 1.2 6 0"/></svg></button>
-                <button class="btn-icon" onclick="toggleStickerPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1.5" y="1.5" width="15" height="15" rx="3"/><path d="M9 1.5v15M1.5 9h15"/></svg></button>
-                <input type="text" id="message-input" placeholder="mensagem..." autocomplete="off">
-                <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
-            </div>
-        </div>
-    </div>
+const esperarImagem = (img) => new Promise((resolve) => {
+    if (img.complete) return resolve();
+    img.onload = resolve;
+    img.onerror = resolve; 
+});
 
-    <div id="modal-edit-profile" class="hidden custom-modal-overlay">
-        <div class="custom-modal">
-            <h3>Editar Perfil</h3><input type="text" id="edit-name-input" placeholder="Seu nome atual..."><p>Como deseja alterar sua foto?</p>
-            <div class="modal-buttons-row"><button class="modal-btn primary" onclick="escolherFotoLink()">Link</button><button class="modal-btn primary" onclick="escolherFotoGaleria()">Galeria</button></div>
-            <button class="modal-btn secondary" style="margin-top: 8px;" onclick="fecharModalPerfil()">Cancelar</button>
-        </div>
-    </div>
-    <div id="modal-cropper" class="hidden custom-modal-overlay">
-        <div class="custom-modal cropper-modal">
-            <h3>Ajuste sua foto</h3><div class="img-container"><img id="image-to-crop" src=""></div>
-            <div class="modal-buttons-row"><button class="modal-btn danger" onclick="fecharModalCropper()">Cancelar</button><button class="modal-btn success" onclick="salvarFotoCortada()">Salvar</button></div>
-        </div>
-    </div>
+window.gerarECompartilharCard = async function() {
+    const aviso = document.getElementById("gerando-aviso");
+    const tituloCap = document.getElementById("cap-title");
+    const subCap = document.getElementById("cap-subtitle");
+    const ratingCap = document.getElementById("cap-rating");
+    const posterCap = document.getElementById("cap-poster");
+    const posterWrap = document.getElementById("cap-poster-wrapper");
+    const bgImg = document.getElementById("cap-bg-img");
+    const bgNoise = document.getElementById("cap-bg-noise");
+    const avatar = document.getElementById("cap-avatar");
+    
+    let nota = document.getElementById("share-rating").value || "S/N";
+    ratingCap.textContent = nota;
 
-    <div id="modal-share" class="hidden custom-modal-overlay">
-        <div class="custom-modal tmdb-modal">
-            <div class="tmdb-tabs">
-                <div class="tmdb-tab active" id="tab-tmdb" onclick="mudarModoShare('tmdb')">Catálogo (Filmes/Séries)</div>
-                <div class="tmdb-tab" id="tab-livre" onclick="mudarModoShare('livre')">Modo Livre (Futebol, YT)</div>
-            </div>
+    const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
+    avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
 
-            <div id="share-tmdb-view">
-                <div class="tmdb-search-box">
-                    <input type="text" id="tmdb-search-input" placeholder="Buscar filme ou série..." autocomplete="off">
-                    <div id="tmdb-search-results" class="hidden"></div>
-                </div>
-                <div id="tmdb-selected" class="hidden">
-                    <div class="tmdb-selected-info">
-                        <img id="tmdb-selected-poster" src="">
-                        <span id="tmdb-selected-title">Título</span>
-                        <button onclick="limparSelecaoTMDB()" class="btn-cancel-reply" style="background:rgba(255,255,255,0.1); border-radius:50%; padding:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    </div>
-                    <div id="tmdb-tv-inputs" class="hidden modal-buttons-row" style="margin-bottom: 10px;">
-                        <input type="number" id="tmdb-season" placeholder="Temp." min="1">
-                        <input type="number" id="tmdb-episode" placeholder="Ep." min="1">
-                    </div>
-                </div>
-            </div>
+    let textoTweet = "";
+    let enviarConviteChat = false; 
+    let conviteTitulo = "";
+    let conviteUrl = "";
 
-            <div id="share-livre-view" class="hidden">
-                <input type="text" id="livre-title-input" placeholder="Ex: Vasco x Flamengo, Vídeo..." style="margin-bottom:10px;">
-                <input type="text" id="livre-url-input" placeholder="Link do YouTube (Para usar a capa)" style="margin-bottom:10px;">
-                <p style="font-size:11px; color:#888; text-align:left; margin-bottom:10px;">Cole um link do YT e o card usará a miniatura original do vídeo!</p>
-            </div>
+    if (modoShareAtual === 'tmdb') {
+        if (!selectedTMDBMedia) return alert("Selecione um filme ou série primeiro!");
+        aviso.classList.remove("hidden");
 
-            <input type="text" id="share-rating" placeholder="Sua nota (ex: 8.5 ou 9/10)" style="margin-top:10px;">
-            <div class="modal-buttons-row" style="margin-top: 16px;">
-                <button class="modal-btn secondary" onclick="fecharModalShare()">Cancelar</button>
-                <button class="modal-btn primary" id="btn-enviar-tweet" onclick="gerarECompartilharCard()">Gerar Card e Tweetar</button>
-            </div>
-            <p id="gerando-aviso" class="hidden" style="margin-top:10px; color:#3ba55c; font-weight:bold; font-size:12px;">Processando arte...</p>
-        </div>
-    </div>
+        const isTv = selectedTMDBMedia.media_type === 'tv';
+        let subText = isTv ? "SÉRIE" : "FILME";
+        
+        if (isTv) {
+            const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
+            const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
+            
+            subText += ` • T${temp}E${ep}`;
+            textoTweet = `Acabei de assistir o episodio S${temp}E${ep} de ${selectedTMDBMedia.titulo}!`;
+        } else {
+            textoTweet = `Acabei de assistir ${selectedTMDBMedia.titulo}!`;
+        }
+        
+        tituloCap.textContent = selectedTMDBMedia.titulo;
+        subCap.textContent = subText;
 
-    <div id="capture-container" style="position: absolute; left: -9999px; top: 0; width: 800px; height: 450px; background: #0b0c10; overflow: hidden; display: flex; font-family: -apple-system, sans-serif;">
-        <img id="cap-bg-img" src="" crossorigin="anonymous" style="position:absolute; width:100%; height:100%; object-fit:cover; filter:blur(25px) brightness(0.35); z-index:0; display:none;">
-        <div id="cap-bg-noise" style="position:absolute; width:100%; height:100%; background: linear-gradient(135deg, #0b0c10 0%, #1e1f24 100%); z-index:0; opacity:1;">
-            <div style="position:absolute; inset:0; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px); z-index:1;"></div>
-        </div>
-        <div style="position:relative; z-index:1; display:flex; width:100%; padding: 40px 50px; align-items:center;">
-            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-                <div id="cap-subtitle" style="color:rgba(255,255,255,0.6); font-size:18px; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">CATEGORIA</div>
-                <div id="cap-title" style="color:#fff; font-size:48px; font-weight:800; margin-bottom:24px; line-height:1.1; text-shadow: 0 4px 12px rgba(0,0,0,0.5);">TÍTULO DO VÍDEO OU FILME AQUI</div>
-                <div style="display:flex; align-items:center; gap:20px;">
-                    <img id="cap-avatar" src="" crossorigin="anonymous" style="width:72px; height:72px; border-radius:50%; border:3px solid #5865F2; object-fit:cover; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
-                    <div style="background:#ffcc00; color:#0b0c10; padding:12px 24px; border-radius:16px; font-weight:900; font-size:36px; display:flex; align-items:center; gap:10px; box-shadow: 0 8px 24px rgba(255,204,0,0.2);">
-                        ★ <span id="cap-rating">9.0</span>
-                    </div>
-                </div>
-                <div style="margin-top:30px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.3); display:flex; align-items:center; gap:8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> Nosso Espaço
-                </div>
-            </div>
-            <div id="cap-poster-wrapper" style="width:240px; margin-left:40px; display:none;">
-                <img id="cap-poster" src="" crossorigin="anonymous" style="width:100%; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,0.8); object-fit:cover; aspect-ratio: 2/3;">
-            </div>
-        </div>
-    </div>
+        posterWrap.style.display = "block";
+        posterWrap.style.width = "240px"; 
+        posterCap.style.aspectRatio = "2/3"; 
+        
+        bgImg.style.display = "block";
+        bgNoise.style.opacity = "0.5"; 
+        bgImg.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.backdrop)}`;
+        posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
 
-    <div id="aviso-container"></div>
-    <script type="module" src="app.js"></script>
-</body>
-</html>
+    } else {
+        const txtLivre = document.getElementById("livre-title-input").value.trim();
+        const urlLivre = document.getElementById("livre-url-input").value.trim();
+        if (!txtLivre) return alert("Digite o que vocês assistiram!");
+        aviso.classList.remove("hidden");
+
+        tituloCap.textContent = txtLivre;
+        subCap.textContent = "NOSSO ESPAÇO";
+        textoTweet = `Acabei de assistir ${txtLivre}!`;
+
+        const extrairIdYoutube = (url) => {
+            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+            return (match && match[2].length === 11) ? match[2] : null;
+        };
+        const ytId = extrairIdYoutube(urlLivre);
+
+        if (ytId) {
+            // CORREÇÃO IMAGEM YT: Puxa o 'hqdefault' em vez do maxresdefault (Garante não travar o card)
+            const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`)}`;
+            
+            posterWrap.style.display = "block";
+            posterWrap.style.width = "320px"; 
+            posterCap.style.aspectRatio = "16/9"; 
+            
+            bgImg.style.display = "block";
+            bgNoise.style.opacity = "0.5"; 
+            bgImg.src = ytThumb;
+            posterCap.src = ytThumb;
+        } else {
+            posterWrap.style.display = "none";
+            bgImg.style.display = "none";
+            bgNoise.style.opacity = "1";
+        }
+
+        // Prepara as informações para mandar o convite no chat para a Shirlei!
+        enviarConviteChat = true;
+        conviteTitulo = txtLivre;
+        conviteUrl = urlLivre;
+    }
+
+    try {
+        const promessas = [esperarImagem(avatar)];
+        if(bgImg.style.display !== "none") promessas.push(esperarImagem(bgImg));
+        if(posterWrap.style.display !== "none") promessas.push(esperarImagem(posterCap));
+        await Promise.all(promessas);
+
+        const promiseBlob = new Promise(async (resolve, reject) => {
+            try {
+                const cardElement = document.getElementById("capture-container");
+                const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10', allowTaint: true });
+                canvas.toBlob((blob) => {
+                    if (blob) resolve(blob);
+                    else reject(new Error("Falha ao criar a imagem"));
+                }, 'image/png');
+            } catch (e) { reject(e); }
+        });
+
+        const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
+        await navigator.clipboard.write([clipboardItem]);
+        
+        exibirNotificacaoCopia();
+        
+        setTimeout(() => {
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
+        }, 100);
+
+        // NOVO: Envia a notificação/convite no chat!
+        if (enviarConviteChat) {
+            await addDoc(collection(db, "mensagens"), { 
+                tipo: "convite_avaliacao", 
+                titulo: conviteTitulo,
+                url: conviteUrl,
+                autor: usuarioAtual, 
+                hora: serverTimestamp(), 
+                lida: false 
+            });
+        }
+
+    } catch (err) {
+        console.error("Erro no Clipboard:", err);
+        alert("O seu navegador bloqueou a cópia automática da imagem. Tente novamente clicando no botão!");
+    } finally {
+        fecharModalShare();
+        aviso.classList.add("hidden");
+    }
+};
+
+/* ─────────────────────────────────────────
+   TELA CHEIA, ARRASTE DO CHAT E MENSAGENS
+───────────────────────────────────────── */
+window.toggleFullScreen = function() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err=>err); else document.exitFullscreen(); };
+window.mudarTransparencia = function(valor) { document.documentElement.style.setProperty('--bg-alpha', valor); };
+window.toggleLeftPanel = function() { document.getElementById("left-panel-wrapper").classList.toggle("minimized"); };
+
+window.apagarHistorico = async function() { if(confirm("ATENÇÃO: Apagar tudo?")) { const snap = await getDocs(query(collection(db, "mensagens"))); snap.forEach(d => deleteDoc(d.ref)); } };
+
+const overlayPanel = document.getElementById("overlay-panel"); const dragHandle = document.getElementById("drag-handle");
+let isDragging = false; let dragOffsetX = 0; let dragOffsetY = 0;
+dragHandle.addEventListener("mousedown", (e) => { isDragging = true; const rect = overlayPanel.getBoundingClientRect(); dragOffsetX = e.clientX - rect.left; dragOffsetY = e.clientY - rect.top; overlayPanel.style.transition = "none"; overlayPanel.style.bottom = "auto"; overlayPanel.style.right = "auto"; });
+document.addEventListener("mousemove", (e) => { if (!isDragging) return; let newX = e.clientX - dragOffsetX; let newY = e.clientY - dragOffsetY; if (newX < 0) newX = 0; if (newY < 0) newY = 0; if (newX + overlayPanel.offsetWidth > window.innerWidth) newX = window.innerWidth - overlayPanel.offsetWidth; if (newY + overlayPanel.offsetHeight > window.innerHeight) newY = window.innerHeight - overlayPanel.offsetHeight; overlayPanel.style.left = `${newX}px`; overlayPanel.style.top = `${newY}px`; });
+document.addEventListener("mouseup", () => { if (isDragging) { isDragging = false; overlayPanel.style.transition = "background 0.1s ease"; } });
+document.addEventListener("fullscreenchange", () => { const chatBox = document.getElementById("chat-box"); if (document.fullscreenElement) document.body.classList.add("fullscreen-active"); else document.body.classList.remove("fullscreen-active"); setTimeout(() => { if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 100); });
+
+window.excluirMensagem = async function(idMsg) { if(confirm("Apagar?")) await deleteDoc(doc(db, "mensagens", idMsg)); };
+window.editarMensagem = async function(idMsg) { const atual = document.getElementById(`texto-${idMsg}`).innerText; const novo = prompt("Editar:", atual); if (novo && novo.trim() !== "" && novo !== atual) await updateDoc(doc(db, "mensagens", idMsg), { texto: novo, editado: true }); };
+window.excluirFigurinhaDaGaveta = async function(idFig) { if(confirm("Remover da gaveta?")) await deleteDoc(doc(db, "gaveta_figurinhas", idFig)); };
+
+function esconderPaineis() { document.getElementById("emoji-picker").classList.add("hidden"); document.getElementById("sticker-picker").classList.add("hidden"); }
+window.toggleEmojiPicker = function() { document.getElementById("emoji-picker").classList.toggle("hidden"); document.getElementById("sticker-picker").classList.add("hidden"); };
+window.toggleStickerPicker = function() { document.getElementById("sticker-picker").classList.toggle("hidden"); document.getElementById("emoji-picker").classList.add("hidden"); };
+document.getElementById("emoji-picker").addEventListener('emoji-click', event => { const i = document.getElementById("message-input"); i.value += event.detail.unicode; i.focus(); });
+
+window.prepararResposta = function(idMsg, autor, texto, tipo) { respondendoA = { id: idMsg, autor: autor, texto: texto, tipo: tipo }; document.getElementById("reply-preview-author").textContent = autor; document.getElementById("reply-preview-text").textContent = tipo === 'figurinha' ? '🖼️ Figurinha' : texto; document.getElementById("reply-preview-container").classList.remove("hidden"); document.getElementById("message-input").focus(); };
+window.cancelarResposta = function() { respondendoA = null; document.getElementById("reply-preview-container").classList.add("hidden"); };
+window.enviarMensagem = async function() { const i = document.getElementById("message-input"); const t = i.value; if(t.trim()==="") return; try { await addDoc(collection(db, "mensagens"), { tipo: "texto", texto: t, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA||null }); i.value = ""; esconderPaineis(); cancelarResposta(); } catch(e){} };
+window.enviarFigurinhaSalva = async function(base64) { try { await addDoc(collection(db, "mensagens"), { tipo: "figurinha", url: base64, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA||null }); esconderPaineis(); cancelarResposta(); } catch(e){} };
+
+function carregarGavetaFigurinhas() {
+    onSnapshot(query(collection(db, "gaveta_figurinhas"), orderBy("hora", "desc"), limit(30)), (snap) => {
+        const grid = document.getElementById("sticker-grid"); grid.innerHTML = "";
+        const figs = []; snap.forEach((d) => figs.push({ id: d.id, ...d.data() }));
+        figs.forEach((fig) => {
+            const w = document.createElement("div"); w.className = "sticker-wrapper";
+            const i = document.createElement("img"); i.src = fig.url; i.className = "sticker-item"; i.onclick = () => enviarFigurinhaSalva(fig.url);
+            const b = document.createElement("button"); b.className = "sticker-del-btn"; b.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5"/></svg>`;
+            b.onclick = (e) => { e.stopPropagation(); excluirFigurinhaDaGaveta(fig.id); }; w.appendChild(i); w.appendChild(b); grid.appendChild(w);
+        });
+    });
+}
+
+window.salvarNovaFigurinha = async function(event) {
+    const file = event.target.files[0]; if (!file) return; event.target.value = '';
+    if (file.size > 800 * 1024) return alert("Imagem muito grande! Até 800KB.");
+    const reader = new FileReader();
+    reader.onloadend = async function() {
+        const base64 = reader.result;
+        try { await addDoc(collection(db, "gaveta_figurinhas"), { url: base64, hora: serverTimestamp() }); enviarFigurinhaSalva(base64); } catch(e){}
+    }; reader.readAsDataURL(file);
+};
+
+// Função para que a Shirlei clique e abra a janela dela já com os dados!
+window.abrirModoLivrePreenchido = function(titulo, url) {
+    abrirCompartilhamento();
+    mudarModoShare('livre');
+    document.getElementById("livre-title-input").value = titulo || "";
+    if(url && url !== "undefined") document.getElementById("livre-url-input").value = url;
+};
+
+function formatarDataHora(ts) { if(!ts) return ""; const d = ts.toDate?ts.toDate():new Date(ts); const h = new Date(); const o = new Date(h); o.setDate(h.getDate()-1); const hh = d.toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}); if(d.toDateString()===h.toDateString()) return `hoje ${hh}`; if(d.toDateString()===o.toDateString()) return `ontem ${hh}`; return d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit"})+` ${hh}`; }
+
+let isInitialLoad = true;
+function carregarMensagens() {
+    onSnapshot(query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50)), (snap) => {
+        if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':(m.tipo==='convite_avaliacao'?'Novo convite de avaliação!':m.texto)}); } }); }
+        const box = document.getElementById("chat-box"); box.innerHTML = "";
+        const todas = []; snap.forEach((d) => todas.push({ id: d.id, ...d.data() })); todas.reverse();
+        todas.forEach((m) => {
+            const isOwn = m.autor === usuarioAtual;
+            if (!isOwn && !m.lida && document.visibilityState === 'visible') updateDoc(doc(db, "mensagens", m.id), { lida: true }).catch(e=>e);
+            
+            const sep = document.createElement("div"); sep.className = "msg-separador"; sep.textContent = formatarDataHora(m.hora); box.appendChild(sep);
+            const r = document.createElement("div"); r.className = `message-row ${isOwn?'own':'other'}`;
+            const ava = `<img src="${avatares[m.autor]||""}" class="avatar">`;
+            
+            let btnAct = "";
+            let cont = "";
+
+            // NOVO: Renderiza visualmente o Convite de Avaliação
+            if (m.tipo === "convite_avaliacao") {
+                cont = `<div style="text-align:center;">
+                            <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:4px;">🎬 Acabei de avaliar:</div>
+                            <strong style="color:#ffcc00; font-size:14px; display:block; margin-bottom:8px;">${m.titulo}</strong>
+                            <button onclick="abrirModoLivrePreenchido('${m.titulo.replace(/'/g, "\\'")}', '${m.url}')" style="background:#5865F2; color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; width:100%;">Avaliar também 📝</button>
+                        </div>`;
+                if (isOwn) btnAct = `<div class="msg-actions"><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+            } else {
+                const txt = m.texto ? m.texto.replace(/'/g, "\\'") : "";
+                const bResp = `<button class="btn-action" onclick="prepararResposta('${m.id}', '${m.autor}', '${txt}', '${m.tipo}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
+                
+                if (isOwn) {
+                    if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                    else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="editarMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
+
+                cont = m.tipo==="figurinha" ? `<img src="${m.url}" class="sticker-img">` : `<span id="texto-${m.id}">${m.texto||""}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
+                if (m.resposta) cont = `<div class="reply-block"><strong>${m.resposta.autor}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':m.resposta.texto}</div>` + cont;
+            }
+
+            if (isOwn) cont += `<span class="msg-status"><svg viewBox="0 0 24 24" fill="none" stroke="${m.lida?"#3ba55c":"rgba(255,255,255,0.4)"}" stroke-width="2.5"><path d="M18 6L7 17l-5-5"/><path d="M22 10l-7.5 7.5L13 16"/></svg></span>`;
+
+            r.innerHTML = isOwn ? `<div class="msg-col col-own"><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>${ava}` : `${ava}<div class="msg-col col-other"><div class="message-author-above">${m.autor}</div><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>`;
+            box.appendChild(r);
+        });
+        box.scrollTop = box.scrollHeight; isInitialLoad = false;
+    });
+}
+
+const fotosDeFundo = [
+    "https://lh3.googleusercontent.com/pw/AP1GczN7hy1Erfh8TyyOodUWRE7TyTV87ZG9lmNIeFtNPxTYegdTv9lDsCuHa9pX2gDIW4nAKSjkhJeTLMZ5vlnSXe2b3sgZXXKd3detQuJX0Zd64bvKSTzRONdT3ueXftmAAO-pcw3KfhcpR1meijcMWy-c=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczNm-4vUYJvI93aikfdouiDN-gxmI-aF0wyGf1XfvwKnNOqkiAdZca1MlHTK_k8EiYd9coqrlB_ssp0jiTHhpXXKA94NzIGf8gvK54weLB6KEhhWcS35ZNAUtbB_IEnoGCd_yLT__hi0kd-MYo_2W5cS=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczPZEbb1VJvfwOQxrX052UbCRWAg_u3PTQa2BOBFONhGzGLJlQe8bw30ZG0ouw0pIDO60YME1fIvbGP6mbLCAm3sKprEenj-132uqdXspCa6bzK-61QMmGGw3bxT91ybaTvLGcUkpuUBi_ZkUj9PDIVD=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczOAn5RfTwpDO2J8x_ArQrRWO3iR9EEXfUgkCY0vL7DhXRqpUj0aDSsOgFaH1rIsbOgBO5Geg5_IVgCL07gQ5NxGgrJydfn2eKd9gJHZfhM7LAXDCcKpLWgeNWxTDrt7TJZYaR-v57yzf_QjA2HqsdmP=w683-h911-s-no-gm?authuser=0",
+    "https://lh3.googleusercontent.com/pw/AP1GczN8LSIJRG_WyVIuVsZJwYoO2zraP9LAmkKB-zjjpjxV-7pVmxfeutQeuYkPytiyDm8UNK2BfRRJGTB8Pux3TgHoXeRF82xbcp7fgu4z-xctXtUxuCAo1aserBl01dRYzoN_6mtlBQQVhJaBS2tRy607=w683-h911-s-no-gm?authuser=0"
+];
+
+function inicializarSliderFundo() { 
+    const track = document.getElementById("slider-track"); 
+    if(track && fotosDeFundo.length > 0) { 
+        let imagensHtml = fotosDeFundo.map(url => `<img src="${url}">`).join(''); 
+        track.innerHTML = imagensHtml + imagensHtml; 
+    } 
+}
+inicializarSliderFundo();
