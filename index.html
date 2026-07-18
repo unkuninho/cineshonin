@@ -172,11 +172,11 @@
         <p class="login-subtitle">quem é você hoje?</p>
         <div class="login-cards">
             <div class="login-card" onclick="entrarNaSala('Kunin')">
-                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg" alt="Kunin">
+                <img class="login-card-photo" src="https://i.pinimg.com/736x/7e/f3/b1/7ef3b103fba3f0a99663554bc7b8ed71.jpg" alt="Kunin">
                 <span class="login-card-name">Kunin</span><span class="login-card-hint">entrar</span>
             </div>
             <div class="login-card" onclick="entrarNaSala('Shirlei')">
-                <img class="login-card-photo" src="https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg" alt="Shirlei">
+                <img class="login-card-photo" src="https://i.pinimg.com/736x/3c/5f/8e/3c5f8e52f3adfa5b4b46c0fdfdd51b2f.jpg" alt="Shirlei">
                 <span class="login-card-name">Shirlei</span><span class="login-card-hint">entrar</span>
             </div>
         </div>
@@ -197,7 +197,7 @@
                     <span id="user-badge"><img id="badge-avatar" src=""><span id="user-badge-name">—</span></span>
                     <div id="presence-badge"><span class="presence-dot offline" id="presence-dot"></span><span id="presence-label">—</span></div>
                     <div style="flex:1"></div>
-                    <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar no X (Twitter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+                    <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l3.09 6.26 6.91 1-5 4.87 1.18 6.88L12 18.27l-6.18 3.24L7 14.63l-5-4.87 6.91-1z"/></svg></button>
                     <button class="btn-top" onclick="toggleFullScreen()" title="Tela cheia"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg></button>
                     <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar histórico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h10M5 4V2.5h4V4M4.5 4v7h5V4"/><line x1="6" y1="6.5" x2="6" y2="9.5"/><line x1="8" y1="6.5" x2="8" y2="9.5"/></svg></button>
                     <div class="transparency-wrap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M5 1v8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M1 5a4 4 0 014-4v8a4 4 0 01-4-4z" fill="rgba(255,255,255,0.35)"/></svg><input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)"></div>
@@ -264,7 +264,7 @@
             <input type="text" id="share-rating" placeholder="Sua nota (ex: 8.5 ou 9/10)" style="margin-top:10px;">
             <div class="modal-buttons-row" style="margin-top: 16px;">
                 <button class="modal-btn secondary" onclick="fecharModalShare()">Cancelar</button>
-                <button class="modal-btn primary" id="btn-enviar-tweet" onclick="gerarECompartilharCard()">Gerar Card e Tweetar</button>
+                <button class="modal-btn primary" id="btn-enviar-card" onclick="gerarECompartilharCard()">Gerar Card</button>
             </div>
             <p id="gerando-aviso" class="hidden" style="margin-top:10px; color:#3ba55c; font-weight:bold; font-size:12px;">Processando arte...</p>
         </div>
@@ -299,7 +299,7 @@
                 </div>
 
                 <div style="margin-top:35px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> Nosso Espaço
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.7-4.35-9.33-8.2C1.02 10.4 1.6 7.02 4.36 5.6 6.6 4.45 9 5.1 12 8c3-2.9 5.4-3.55 7.64-2.4 2.76 1.42 3.34 4.8 1.69 7.2C18.7 16.65 12 21 12 21z"/></svg> Nosso Espaço
                 </div>
             </div>
 

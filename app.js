@@ -252,7 +252,7 @@ window.limparSelecaoTMDB = function() {
 
 function exibirNotificacaoCopia() {
     const box = document.getElementById("aviso-container");
-    box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar no Twitter.</div>`;
+    box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar onde quiser.</div>`;
 }
 
 const esperarImagem = (img) => new Promise((resolve) => {
@@ -279,7 +279,6 @@ window.gerarECompartilharCard = async function() {
     const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
     avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
 
-    let textoTweet = "";
     let enviarConviteChat = false; 
     let conviteTitulo = "";
     let conviteUrl = "";
@@ -297,13 +296,10 @@ window.gerarECompartilharCard = async function() {
         if (isTv) {
             const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
             const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
-            textoTweet = `Acabei de assistir o episodio S${temp}E${ep} de ${selectedTMDBMedia.titulo}!`;
             
             boxTop.innerHTML = `S${temp}E${ep}`;
             boxBottom.textContent = "JUST WATCHED";
         } else {
-            textoTweet = `Acabei de assistir ${selectedTMDBMedia.titulo}!`;
-            
             boxTop.innerHTML = `★ ${nota}`;
             boxBottom.textContent = "MY RATING";
         }
@@ -327,7 +323,6 @@ window.gerarECompartilharCard = async function() {
 
         tituloCap.textContent = txtLivre;
         subCap.textContent = "LIVRE • VÍDEO OU ESPORTE";
-        textoTweet = `Acabei de assistir ${txtLivre}!`;
 
         boxTop.innerHTML = `★ ${nota}`;
         boxBottom.textContent = "MY RATING";
@@ -387,10 +382,6 @@ window.gerarECompartilharCard = async function() {
         await navigator.clipboard.write([clipboardItem]);
         
         exibirNotificacaoCopia();
-        
-        setTimeout(() => {
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(textoTweet)}`, '_blank');
-        }, 100);
 
         if (enviarConviteChat) {
             await addDoc(collection(db, "mensagens"), { 
