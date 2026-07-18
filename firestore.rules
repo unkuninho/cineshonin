@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Regras sugeridas para o projeto "createseriesapp".
+// Isso NÃO vai dentro do app.js — precisa ser colado em:
+// Firebase Console > Firestore Database > Regras (ou via `firebase deploy --only firestore:rules`)
+//
+// Como o app não usa Firebase Authentication, não há como o Firestore saber
+// "quem" está fazendo a requisição. Estas regras apenas garantem que os dados
+// gravados têm o formato esperado, mas QUALQUER pessoa com o link ainda
+// consegue ler/escrever (isso é uma limitação de não ter login).
+// Se quiser bloquear de verdade para só vocês dois, o ideal é adicionar
+// Firebase Authentication (ex: login anônimo + lista de UIDs permitidos).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /mensagens/{msgId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['tipo','autor','hora'])
+                    && request.resource.data.autor in ['Kunin','Shirlei']
+                    && request.resource.data.tipo in ['texto','figurinha','convite_avaliacao'];
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['lida','texto','editado']);
+      allow delete: if true;
+    }
+
+    match /gaveta_figurinhas/{figId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['url','hora'])
+                    && request.resource.data.url is string
+                    && request.resource.data.url.size() < 1400000; // ~1MB base64
+      allow delete: if true;
+      allow update: if false;
+    }
+
+    match /presenca/{nome} {
+      allow read: if true;
+      allow write: if nome in ['Kunin','Shirlei'];
+    }
+
+    match /chamada/{salaId} {
+      allow read, write: if true;
+
+      match /offerCandidates/{candId} {
+        allow read, write: if true;
+      }
+      match /answerCandidates/{candId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Bloqueia qualquer outra coleção não prevista acima
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

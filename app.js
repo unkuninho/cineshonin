@@ -29,6 +29,9 @@ const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const SALA_ID = "sala-principal";
 let peerConnection = null;
 let localStream = null;
+let unsubChamadaBroadcaster = null;
+let unsubAnswerCandidates = null;
+let unsubOfferCandidates = null;
 
 function refChamada()          { return doc(db, "chamada", SALA_ID); }
 function refOfferCandidates()  { return collection(db, "chamada", SALA_ID, "offerCandidates"); }
@@ -58,7 +61,8 @@ window.iniciarCompartilhamento = async function() {
     await peerConnection.setLocalDescription(offer);
     await setDoc(refChamada(), { offer: { type: offer.type, sdp: offer.sdp }, answer: null });
 
-    onSnapshot(refChamada(), async (snap) => {
+    if (unsubChamadaBroadcaster) { unsubChamadaBroadcaster(); unsubChamadaBroadcaster = null; }
+    unsubChamadaBroadcaster = onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
         if (dados?.answer && peerConnection && !peerConnection.currentRemoteDescription && peerConnection.signalingState === "have-local-offer") { 
             await peerConnection.setRemoteDescription(new RTCSessionDescription(dados.answer));
@@ -67,7 +71,8 @@ window.iniciarCompartilhamento = async function() {
         }
     });
 
-    onSnapshot(refAnswerCandidates(), (snap) => {
+    if (unsubAnswerCandidates) { unsubAnswerCandidates(); unsubAnswerCandidates = null; }
+    unsubAnswerCandidates = onSnapshot(refAnswerCandidates(), (snap) => {
         snap.docChanges().forEach((change) => {
             if (change.type === "added" && peerConnection) {
                 const candidate = new RTCIceCandidate(change.doc.data());
@@ -79,6 +84,8 @@ window.iniciarCompartilhamento = async function() {
 };
 
 function pararTransmissao() {
+    if (unsubChamadaBroadcaster) { unsubChamadaBroadcaster(); unsubChamadaBroadcaster = null; }
+    if (unsubAnswerCandidates) { unsubAnswerCandidates(); unsubAnswerCandidates = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     if (peerConnection) { peerConnection.close(); peerConnection = null; }
     document.getElementById("local-preview").srcObject = null; document.getElementById("local-preview").classList.add("hidden");
@@ -92,6 +99,7 @@ async function entrarComoEspectadora() {
     onSnapshot(refChamada(), async (snap) => {
         const dados = snap.data();
         if (!dados?.offer) {
+            if (unsubOfferCandidates) { unsubOfferCandidates(); unsubOfferCandidates = null; }
             if (peerConnection) { peerConnection.close(); peerConnection = null; document.getElementById("screen-video").srcObject = null; document.getElementById("screen-video").classList.add("hidden"); document.getElementById("sem-transmissao").classList.remove("hidden"); }
             return;
         }
@@ -102,7 +110,8 @@ async function entrarComoEspectadora() {
         peerConnection.ontrack = (event) => { document.getElementById("screen-video").srcObject = event.streams[0]; document.getElementById("screen-video").classList.remove("hidden"); document.getElementById("sem-transmissao").classList.add("hidden"); };
         peerConnection.onicecandidate = (event) => { if (event.candidate) addDoc(refAnswerCandidates(), event.candidate.toJSON()); };
 
-        onSnapshot(refOfferCandidates(), (snapCand) => {
+        if (unsubOfferCandidates) { unsubOfferCandidates(); unsubOfferCandidates = null; }
+        unsubOfferCandidates = onSnapshot(refOfferCandidates(), (snapCand) => {
             snapCand.docChanges().forEach((change) => {
                 if (change.type === "added" && peerConnection) {
                     const candidate = new RTCIceCandidate(change.doc.data());
@@ -213,7 +222,15 @@ document.getElementById("tmdb-search-input").addEventListener("input", (e) => {
     clearTimeout(debounceTimer); const q = e.target.value.trim(); const resBox = document.getElementById("tmdb-search-results");
     if (q.length < 2) { resBox.classList.add("hidden"); return; }
     debounceTimer = setTimeout(async () => {
-        try { const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(q)}`); const data = await res.json(); mostrarResultadosTMDB(data.results); } catch (err) {}
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(q)}`);
+            if (!res.ok) throw new Error("Falha na requisição TMDB");
+            const data = await res.json();
+            mostrarResultadosTMDB(Array.isArray(data.results) ? data.results : []);
+        } catch (err) {
+            resBox.innerHTML = `<div style="padding:10px; font-size:12px; color:gray; text-align:center;">Erro na busca. Tente novamente.</div>`;
+            resBox.classList.remove("hidden");
+        }
     }, 400);
 });
 
@@ -455,7 +472,7 @@ function carregarGavetaFigurinhas() {
 
 window.salvarNovaFigurinha = async function(event) {
     const file = event.target.files[0]; if (!file) return; event.target.value = '';
-    if (file.size > 800 * 1024) return alert("Imagem muito grande! Até 800KB.");
+    if (file.size > 650 * 1024) return alert("Imagem muito grande! Até 650KB.");
     const reader = new FileReader();
     reader.onloadend = async function() {
         const base64 = reader.result;
@@ -470,11 +487,34 @@ window.abrirModoLivrePreenchido = function(titulo, url) {
     if(url && url !== "undefined") document.getElementById("livre-url-input").value = url;
 };
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function formatarDataHora(ts) { if(!ts) return ""; const d = ts.toDate?ts.toDate():new Date(ts); const h = new Date(); const o = new Date(h); o.setDate(h.getDate()-1); const hh = d.toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}); if(d.toDateString()===h.toDateString()) return `hoje ${hh}`; if(d.toDateString()===o.toDateString()) return `ontem ${hh}`; return d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit"})+` ${hh}`; }
 
+document.getElementById("chat-box").addEventListener("click", (e) => {
+    const btnExcluir = e.target.closest(".btn-excluir");
+    if (btnExcluir) { excluirMensagem(btnExcluir.dataset.id); return; }
+    const btnEditar = e.target.closest(".btn-editar");
+    if (btnEditar) { editarMensagem(btnEditar.dataset.id); return; }
+    const btnResponder = e.target.closest(".btn-responder");
+    if (btnResponder) { prepararResposta(btnResponder.dataset.id, btnResponder.dataset.autor, btnResponder.dataset.texto, btnResponder.dataset.tipo); return; }
+    const btnAvaliar = e.target.closest(".btn-avaliar-tambem");
+    if (btnAvaliar) { abrirModoLivrePreenchido(btnAvaliar.dataset.titulo, btnAvaliar.dataset.url); return; }
+});
+
 let isInitialLoad = true;
+let unsubMensagens = null;
 function carregarMensagens() {
-    onSnapshot(query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50)), (snap) => {
+    if (unsubMensagens) { unsubMensagens(); unsubMensagens = null; }
+    unsubMensagens = onSnapshot(query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50)), (snap) => {
         if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':(m.tipo==='convite_avaliacao'?'Novo convite de avaliação!':m.texto)}); } }); }
         const box = document.getElementById("chat-box"); box.innerHTML = "";
         const todas = []; snap.forEach((d) => todas.push({ id: d.id, ...d.data() })); todas.reverse();
@@ -484,34 +524,36 @@ function carregarMensagens() {
             
             const sep = document.createElement("div"); sep.className = "msg-separador"; sep.textContent = formatarDataHora(m.hora); box.appendChild(sep);
             const r = document.createElement("div"); r.className = `message-row ${isOwn?'own':'other'}`;
-            const ava = `<img src="${avatares[m.autor]||""}" class="avatar">`;
+            const autorSeguro = escapeHtml(m.autor);
+            const ava = `<img src="${escapeHtml(avatares[m.autor]||"")}" class="avatar">`;
             
             let btnAct = "";
             let cont = "";
 
             if (m.tipo === "convite_avaliacao") {
+                const tituloSeguro = escapeHtml(m.titulo);
                 cont = `<div style="text-align:center;">
                             <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:4px;">🎬 Acabei de avaliar:</div>
-                            <strong style="color:#ffcc00; font-size:14px; display:block; margin-bottom:8px;">${m.titulo}</strong>
-                            <button onclick="abrirModoLivrePreenchido('${m.titulo.replace(/'/g, "\\'")}', '${m.url}')" style="background:#5865F2; color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; width:100%;">Avaliar também 📝</button>
+                            <strong style="color:#ffcc00; font-size:14px; display:block; margin-bottom:8px;">${tituloSeguro}</strong>
+                            <button class="btn-avaliar-tambem" data-titulo="${tituloSeguro}" data-url="${escapeHtml(m.url||"")}" style="background:#5865F2; color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; width:100%;">Avaliar também 📝</button>
                         </div>`;
-                if (isOwn) btnAct = `<div class="msg-actions"><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                if (isOwn) btnAct = `<div class="msg-actions"><button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
             } else {
-                const txt = m.texto ? m.texto.replace(/'/g, "\\'") : "";
-                const bResp = `<button class="btn-action" onclick="prepararResposta('${m.id}', '${m.autor}', '${txt}', '${m.tipo}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
+                const txtSeguro = escapeHtml(m.texto || "");
+                const bResp = `<button class="btn-action btn-responder" data-id="${m.id}" data-autor="${autorSeguro}" data-texto="${txtSeguro}" data-tipo="${escapeHtml(m.tipo)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
                 
                 if (isOwn) {
-                    if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-                    else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action" onclick="editarMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action" onclick="excluirMensagem('${m.id}')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                    if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+                    else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action btn-editar" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
                 } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
 
-                cont = m.tipo==="figurinha" ? `<img src="${m.url}" class="sticker-img">` : `<span id="texto-${m.id}">${m.texto||""}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
-                if (m.resposta) cont = `<div class="reply-block"><strong>${m.resposta.autor}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':m.resposta.texto}</div>` + cont;
+                cont = m.tipo==="figurinha" ? `<img src="${escapeHtml(m.url)}" class="sticker-img">` : `<span id="texto-${m.id}">${escapeHtml(m.texto||"")}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
+                if (m.resposta) cont = `<div class="reply-block"><strong>${escapeHtml(m.resposta.autor)}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':escapeHtml(m.resposta.texto)}</div>` + cont;
             }
 
             if (isOwn) cont += `<span class="msg-status"><svg viewBox="0 0 24 24" fill="none" stroke="${m.lida?"#3ba55c":"rgba(255,255,255,0.4)"}" stroke-width="2.5"><path d="M18 6L7 17l-5-5"/><path d="M22 10l-7.5 7.5L13 16"/></svg></span>`;
 
-            r.innerHTML = isOwn ? `<div class="msg-col col-own"><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>${ava}` : `${ava}<div class="msg-col col-other"><div class="message-author-above">${m.autor}</div><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>`;
+            r.innerHTML = isOwn ? `<div class="msg-col col-own"><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>${ava}` : `${ava}<div class="msg-col col-other"><div class="message-author-above">${autorSeguro}</div><div class="message-bubble ${m.tipo==='figurinha'?'is-sticker':''}">${btnAct}${cont}</div></div>`;
             box.appendChild(r);
         });
         box.scrollTop = box.scrollHeight; isInitialLoad = false;
