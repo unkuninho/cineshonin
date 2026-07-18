@@ -13,13 +13,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let usuarioAtual = "";
-let cropperInstance = null; 
-let nomeTemporarioUpload = ""; 
 let respondendoA = null; 
 
 const avatares = {
-    "Kunin": "https://pbs.twimg.com/profile_images/2056927892857036800/CuIC3wUQ_400x400.jpg",
-    "Shirlei": "https://pbs.twimg.com/profile_images/2052527008366678018/-k3TkFvu_400x400.jpg"
+    "Kunin": "https://i.pinimg.com/736x/7e/f3/b1/7ef3b103fba3f0a99663554bc7b8ed71.jpg",
+    "Shirlei": "https://i.pinimg.com/736x/3c/5f/8e/3c5f8e52f3adfa5b4b46c0fdfdd51b2f.jpg"
 };
 
 /* ─────────────────────────────────────────
@@ -156,19 +154,6 @@ window.entrarNaSala = function(nome) {
 };
 
 function atualizarBadgeUsuario() { document.getElementById("user-badge-name").textContent = usuarioAtual; document.getElementById("badge-avatar").src = avatares[usuarioAtual] || ""; }
-window.abrirModalPerfil = function() { document.getElementById("edit-name-input").value = usuarioAtual; document.getElementById("modal-edit-profile").classList.remove("hidden"); };
-window.fecharModalPerfil = function() { document.getElementById("modal-edit-profile").classList.add("hidden"); };
-window.escolherFotoLink = function() { const n = document.getElementById("edit-name-input").value.trim(); if(!n) return; const f = prompt("URL da imagem:"); if (f) { aplicarNovoPerfil(n, f.trim()); fecharModalPerfil(); } };
-window.escolherFotoGaleria = function() { const n = document.getElementById("edit-name-input").value.trim(); if(!n) return; nomeTemporarioUpload = n; document.getElementById("profile-upload").click(); };
-window.iniciarCorteDeFoto = function(event) {
-    const file = event.target.files[0]; if (!file) return; event.target.value = '';
-    const reader = new FileReader();
-    reader.onloadend = function() { fecharModalPerfil(); const img = document.getElementById("image-to-crop"); img.src = reader.result; document.getElementById("modal-cropper").classList.remove("hidden"); if (cropperInstance) cropperInstance.destroy(); setTimeout(() => { cropperInstance = new Cropper(img, { aspectRatio: 1, viewMode: 1, background: false }); }, 100); };
-    reader.readAsDataURL(file);
-};
-window.fecharModalCropper = function() { document.getElementById("modal-cropper").classList.add("hidden"); if(cropperInstance) cropperInstance.destroy(); };
-window.salvarFotoCortada = function() { if (!cropperInstance) return; const canvas = cropperInstance.getCroppedCanvas({ width: 300, height: 300 }); aplicarNovoPerfil(nomeTemporarioUpload, canvas.toDataURL('image/webp', 0.85)); fecharModalCropper(); };
-function aplicarNovoPerfil(novoNome, novaFoto) { setDoc(doc(db, "presenca", usuarioAtual), { online: false, ultimaVez: serverTimestamp() }); usuarioAtual = novoNome; avatares[usuarioAtual] = novaFoto; atualizarBadgeUsuario(); marcarPresenca(usuarioAtual, true); carregarMensagens(); }
 
 /* ─────────────────────────────────────────
    GERAÇÃO DE CARD (TMDB & LIVRE YOUTUBE)

@@ -6,8 +6,6 @@
     <title>Nosso Espaço</title>
     
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
@@ -146,9 +144,6 @@
         .modal-btn.success { background: #3ba55c; }
         .modal-btn.danger { background: #ed4245; }
 
-        .cropper-modal { width: 90%; max-width: 450px; }
-        .img-container { width: 100%; max-height: 350px; background: #0b0c10; border-radius: 12px; overflow: hidden; }
-        .img-container img { display: block; max-width: 100%; }
 
         .tmdb-modal { width: 380px; }
         .tmdb-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
@@ -200,8 +195,6 @@
             <div id="left-panel-content">
                 <div class="top-controls">
                     <span id="user-badge"><img id="badge-avatar" src=""><span id="user-badge-name">—</span></span>
-                    <button class="btn-top" onclick="abrirModalPerfil()" title="Editar Perfil"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2L12 4.5M10.5 1.5a2.12 2.12 0 013 3L4 14H1v-3L10.5 1.5z"/></svg></button>
-                    <input type="file" id="profile-upload" accept="image/*" class="hidden" onchange="iniciarCorteDeFoto(event)">
                     <div id="presence-badge"><span class="presence-dot offline" id="presence-dot"></span><span id="presence-label">—</span></div>
                     <div style="flex:1"></div>
                     <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar no X (Twitter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
@@ -236,19 +229,6 @@
         </div>
     </div>
 
-    <div id="modal-edit-profile" class="hidden custom-modal-overlay">
-        <div class="custom-modal">
-            <h3>Editar Perfil</h3><input type="text" id="edit-name-input" placeholder="Seu nome atual..."><p>Como deseja alterar sua foto?</p>
-            <div class="modal-buttons-row"><button class="modal-btn primary" onclick="escolherFotoLink()">Link</button><button class="modal-btn primary" onclick="escolherFotoGaleria()">Galeria</button></div>
-            <button class="modal-btn secondary" style="margin-top: 8px;" onclick="fecharModalPerfil()">Cancelar</button>
-        </div>
-    </div>
-    <div id="modal-cropper" class="hidden custom-modal-overlay">
-        <div class="custom-modal cropper-modal">
-            <h3>Ajuste sua foto</h3><div class="img-container"><img id="image-to-crop" src=""></div>
-            <div class="modal-buttons-row"><button class="modal-btn danger" onclick="fecharModalCropper()">Cancelar</button><button class="modal-btn success" onclick="salvarFotoCortada()">Salvar</button></div>
-        </div>
-    </div>
 
     <div id="modal-share" class="hidden custom-modal-overlay">
         <div class="custom-modal tmdb-modal">
