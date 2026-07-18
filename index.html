@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nosso Espaço</title>
-    
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root { --bg-alpha: 0.75; }
@@ -92,7 +89,6 @@
         .message-row.other .message-bubble { background: rgba(30,31,36,0.8); color: #e8e8e8; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(4px); }
         .message-bubble.is-sticker { background: transparent !important; padding: 0; box-shadow: none; border: none; }
         .sticker-img { max-width: 110px; max-height: 110px; object-fit: contain; border-radius: 8px; cursor: pointer; }
-        .msg-editado { font-size: 10px; color: rgba(255,255,255,0.4); font-style: italic; }
         
         .reply-block { background: rgba(0,0,0,0.25); border-left: 3px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; font-size: 11px; color: rgba(255,255,255,0.8); }
         .reply-block strong { color: rgba(255,255,255,0.9); display: block; margin-bottom: 2px;}
@@ -111,7 +107,6 @@
         #reply-preview-text { font-size: 12px; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
         .btn-cancel-reply { background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;}
         
-        emoji-picker { position: absolute; bottom: 65px; right: 15px; z-index: 100; height: 320px; --background: #1e1f24; border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         #sticker-picker { position: absolute; bottom: 65px; right: 15px; width: 310px; height: 310px; background: #1e1f24; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); z-index: 100; display: flex; flex-direction: column; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
         .sticker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.65); }
         .btn-add-sticker { background: #5865F2; color: white; border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; }
@@ -145,23 +140,6 @@
         .modal-btn.danger { background: #ed4245; }
 
 
-        .tmdb-modal { width: 380px; }
-        .tmdb-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
-        .tmdb-tab { flex: 1; padding: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; transition: 0.2s; }
-        .tmdb-tab.active { color: white; border-bottom-color: #5865F2; }
-        
-        .tmdb-search-box { position: relative; width: 100%; text-align: left; }
-        #tmdb-search-results { position: absolute; top: 100%; left: 0; right: 0; background: #1e1f24; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-top: 4px; max-height: 200px; overflow-y: auto; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .tmdb-result-item { display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .tmdb-result-item:hover { background: rgba(255,255,255,0.1); }
-        .tmdb-result-poster { width: 32px; height: 48px; border-radius: 4px; object-fit: cover; background: #111; border: 1px solid rgba(255,255,255,0.05); }
-        .tmdb-result-text { display: flex; flex-direction: column; font-size: 13px; color: rgba(255,255,255,0.9); }
-        .tmdb-selected-info { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 12px; margin-bottom: 10px; text-align: left; border: 1px solid rgba(255,255,255,0.05);}
-        #tmdb-selected-poster { width: 40px; height: 60px; border-radius: 4px; object-fit: cover; }
-        #tmdb-selected-title { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.3;}
-
-        #copia-aviso { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #3ba55c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 10000; animation: fadeOut 3s forwards; }
-        @keyframes fadeOut { 0% { opacity: 0; transform: translate(-50%, 10px); } 10% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; display: none; } }
     </style>
 </head>
 <body>
@@ -197,7 +175,6 @@
                     <span id="user-badge"><img id="badge-avatar" src=""><span id="user-badge-name">—</span></span>
                     <div id="presence-badge"><span class="presence-dot offline" id="presence-dot"></span><span id="presence-label">—</span></div>
                     <div style="flex:1"></div>
-                    <button class="btn-top" onclick="abrirCompartilhamento()" title="Avaliar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l3.09 6.26 6.91 1-5 4.87 1.18 6.88L12 18.27l-6.18 3.24L7 14.63l-5-4.87 6.91-1z"/></svg></button>
                     <button class="btn-top" onclick="toggleFullScreen()" title="Tela cheia"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg></button>
                     <button class="btn-top danger" onclick="apagarHistorico()" title="Apagar histórico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h10M5 4V2.5h4V4M4.5 4v7h5V4"/><line x1="6" y1="6.5" x2="6" y2="9.5"/><line x1="8" y1="6.5" x2="8" y2="9.5"/></svg></button>
                     <div class="transparency-wrap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M5 1v8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/><path d="M1 5a4 4 0 014-4v8a4 4 0 01-4-4z" fill="rgba(255,255,255,0.35)"/></svg><input type="range" id="transparency-slider" min="0" max="1" step="0.05" value="0.75" oninput="mudarTransparencia(this.value)"></div>
@@ -211,7 +188,6 @@
         <div id="overlay-panel">
             <div id="drag-handle"><svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="3" r="1"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="3" r="1"/><circle cx="15" cy="9" r="1"/></svg></div>
             <div id="chat-box"></div>
-            <emoji-picker class="hidden" id="emoji-picker"></emoji-picker>
             <div id="sticker-picker" class="hidden">
                 <div class="sticker-header"><span>Gaveta de Figurinhas</span><button class="btn-add-sticker" onclick="document.getElementById('sticker-upload').click()">+ Adicionar</button><input type="file" id="sticker-upload" accept="image/*" class="hidden" onchange="salvarNovaFigurinha(event)"></div>
                 <div id="sticker-grid"></div>
@@ -221,7 +197,6 @@
                 <button onclick="cancelarResposta()" class="btn-cancel-reply"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="input-group">
-                <button class="btn-icon" onclick="toggleEmojiPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="9" r="7.5"/><circle cx="6.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r=".6" fill="currentColor" stroke="none"/><path d="M6 11.5c.8 1.2 5.2 1.2 6 0"/></svg></button>
                 <button class="btn-icon" onclick="toggleStickerPicker()"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1.5" y="1.5" width="15" height="15" rx="3"/><path d="M9 1.5v15M1.5 9h15"/></svg></button>
                 <input type="text" id="message-input" placeholder="mensagem..." autocomplete="off">
                 <button class="btn-enviar" onclick="enviarMensagem()">Enviar</button>
@@ -229,87 +204,6 @@
         </div>
     </div>
 
-
-    <div id="modal-share" class="hidden custom-modal-overlay">
-        <div class="custom-modal tmdb-modal">
-            <div class="tmdb-tabs">
-                <div class="tmdb-tab active" id="tab-tmdb" onclick="mudarModoShare('tmdb')">Catálogo (Filmes/Séries)</div>
-                <div class="tmdb-tab" id="tab-livre" onclick="mudarModoShare('livre')">Modo Livre (Futebol, YT)</div>
-            </div>
-
-            <div id="share-tmdb-view">
-                <div class="tmdb-search-box">
-                    <input type="text" id="tmdb-search-input" placeholder="Buscar filme ou série..." autocomplete="off">
-                    <div id="tmdb-search-results" class="hidden"></div>
-                </div>
-                <div id="tmdb-selected" class="hidden">
-                    <div class="tmdb-selected-info">
-                        <img id="tmdb-selected-poster" src="">
-                        <span id="tmdb-selected-title">Título</span>
-                        <button onclick="limparSelecaoTMDB()" class="btn-cancel-reply" style="background:rgba(255,255,255,0.1); border-radius:50%; padding:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    </div>
-                    <div id="tmdb-tv-inputs" class="hidden modal-buttons-row" style="margin-bottom: 10px;">
-                        <input type="number" id="tmdb-season" placeholder="Temp." min="1">
-                        <input type="number" id="tmdb-episode" placeholder="Ep." min="1">
-                    </div>
-                </div>
-            </div>
-
-            <div id="share-livre-view" class="hidden">
-                <input type="text" id="livre-title-input" placeholder="Ex: Vasco x Flamengo, Vídeo..." style="margin-bottom:10px;">
-                <input type="text" id="livre-url-input" placeholder="Link do YouTube (Para usar a capa e o título)" style="margin-bottom:10px;">
-                <p style="font-size:11px; color:#888; text-align:left; margin-bottom:10px;">Cole um link do YT e o card usará a miniatura original do vídeo!</p>
-            </div>
-
-            <input type="text" id="share-rating" placeholder="Sua nota (ex: 8.5 ou 9/10)" style="margin-top:10px;">
-            <div class="modal-buttons-row" style="margin-top: 16px;">
-                <button class="modal-btn secondary" onclick="fecharModalShare()">Cancelar</button>
-                <button class="modal-btn primary" id="btn-enviar-card" onclick="gerarECompartilharCard()">Gerar Card</button>
-            </div>
-            <p id="gerando-aviso" class="hidden" style="margin-top:10px; color:#3ba55c; font-weight:bold; font-size:12px;">Processando arte...</p>
-        </div>
-    </div>
-
-    <div id="capture-container" style="position: absolute; left: -9999px; top: 0; width: 800px; height: 450px; background: #0b0c10; overflow: hidden; display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-        <img id="cap-bg-img" src="" crossorigin="anonymous" style="position:absolute; width:100%; height:100%; object-fit:cover; filter:blur(15px) brightness(0.4); z-index:0; display:none; transform: scale(1.1);">
-        <div id="cap-bg-noise" style="position:absolute; width:100%; height:100%; background: linear-gradient(135deg, #0b0c10 0%, #1a1a24 100%); z-index:0; opacity:1;">
-            <div style="position:absolute; inset:0; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px); z-index:1;"></div>
-        </div>
-
-        <div style="position:relative; z-index:1; display:flex; width:100%; padding: 40px 50px; align-items:center; justify-content: space-between;">
-            
-            <div style="display:flex; flex-direction:column; justify-content:center; max-width: 55%;">
-                <div id="cap-subtitle" style="color:rgba(255,255,255,0.7); font-size:15px; font-weight:600; margin-bottom:10px; letter-spacing: 0.5px;">2026 • MOVIES</div>
-                
-                <div id="cap-title" style="color:#fff; font-size:40px; font-weight:800; margin-bottom:24px; line-height:1.2; text-shadow: 0 4px 12px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
-                    TITLE
-                </div>
-                
-                <div style="display:flex; align-items:center; gap:20px;">
-                    <img id="cap-avatar" src="" crossorigin="anonymous" style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); object-fit:cover; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
-                    
-                    <div style="display:flex; flex-direction:column; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
-                        <div id="cap-box-top" style="background:#ffcc00; color:#0b0c10; padding:10px 24px; font-weight:900; font-size:26px; display:flex; align-items:center; justify-content:center;">
-                            ★ 8.0
-                        </div>
-                        <div id="cap-box-bottom" style="background:#fff; color:#0b0c10; padding:4px 24px; font-weight:800; font-size:10px; text-align:center; text-transform:uppercase; letter-spacing:0.5px;">
-                            MY RATING
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top:35px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.7-4.35-9.33-8.2C1.02 10.4 1.6 7.02 4.36 5.6 6.6 4.45 9 5.1 12 8c3-2.9 5.4-3.55 7.64-2.4 2.76 1.42 3.34 4.8 1.69 7.2C18.7 16.65 12 21 12 21z"/></svg> Nosso Espaço
-                </div>
-            </div>
-
-            <div id="cap-poster-wrapper" style="width:230px; display:none; flex-shrink: 0;">
-                <img id="cap-poster" src="" crossorigin="anonymous" style="width:100%; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.6); object-fit:cover; aspect-ratio: 2/3;">
-            </div>
-        </div>
-    </div>
-
-    <div id="aviso-container"></div>
     <script type="module" src="app.js"></script>
 </body>
 </html>

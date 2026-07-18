@@ -156,254 +156,6 @@ window.entrarNaSala = function(nome) {
 function atualizarBadgeUsuario() { document.getElementById("user-badge-name").textContent = usuarioAtual; document.getElementById("badge-avatar").src = avatares[usuarioAtual] || ""; }
 
 /* ─────────────────────────────────────────
-   GERAÇÃO DE CARD (TMDB & LIVRE YOUTUBE)
-───────────────────────────────────────── */
-const TMDB_API_KEY = "72c510d429567c89261f7a37b8ef9a0b";
-let debounceTimer;
-let selectedTMDBMedia = null;
-let modoShareAtual = 'tmdb';
-
-window.abrirCompartilhamento = function() {
-    document.getElementById("modal-share").classList.remove("hidden");
-    mudarModoShare('tmdb');
-};
-
-window.fecharModalShare = function() { document.getElementById("modal-share").classList.add("hidden"); };
-
-window.mudarModoShare = function(modo) {
-    modoShareAtual = modo;
-    if(modo === 'tmdb') {
-        document.getElementById("tab-tmdb").classList.add("active");
-        document.getElementById("tab-livre").classList.remove("active");
-        document.getElementById("share-tmdb-view").classList.remove("hidden");
-        document.getElementById("share-livre-view").classList.add("hidden");
-        limparSelecaoTMDB();
-    } else {
-        document.getElementById("tab-livre").classList.add("active");
-        document.getElementById("tab-tmdb").classList.remove("active");
-        document.getElementById("share-livre-view").classList.remove("hidden");
-        document.getElementById("share-tmdb-view").classList.add("hidden");
-    }
-};
-
-document.getElementById("livre-url-input").addEventListener("input", async (e) => {
-    const url = e.target.value.trim();
-    const inputTitulo = document.getElementById("livre-title-input");
-    
-    if (url.includes("youtube.com") || url.includes("youtu.be")) {
-        inputTitulo.value = "Buscando título...";
-        try {
-            const res = await fetch(`https://noembed.com/embed?dataType=json&url=${encodeURIComponent(url)}`);
-            const data = await res.json();
-            if (data.title) inputTitulo.value = data.title;
-            else inputTitulo.value = "";
-        } catch (err) {
-            inputTitulo.value = "";
-        }
-    }
-});
-
-document.getElementById("tmdb-search-input").addEventListener("input", (e) => {
-    clearTimeout(debounceTimer); const q = e.target.value.trim(); const resBox = document.getElementById("tmdb-search-results");
-    if (q.length < 2) { resBox.classList.add("hidden"); return; }
-    debounceTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(q)}`);
-            if (!res.ok) throw new Error("Falha na requisição TMDB");
-            const data = await res.json();
-            mostrarResultadosTMDB(Array.isArray(data.results) ? data.results : []);
-        } catch (err) {
-            resBox.innerHTML = `<div style="padding:10px; font-size:12px; color:gray; text-align:center;">Erro na busca. Tente novamente.</div>`;
-            resBox.classList.remove("hidden");
-        }
-    }, 400);
-});
-
-function mostrarResultadosTMDB(results) {
-    const resBox = document.getElementById("tmdb-search-results"); resBox.innerHTML = "";
-    const validos = results.filter(r => r.media_type === 'movie' || r.media_type === 'tv').slice(0, 5);
-    if (validos.length === 0) { resBox.innerHTML = `<div style="padding:10px; font-size:12px; color:gray; text-align:center;">Sem resultados.</div>`; resBox.classList.remove("hidden"); return; }
-    validos.forEach(item => {
-        const titulo = item.title || item.name; const ano = (item.release_date || item.first_air_date || "N/A").substring(0,4);
-        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : "https://via.placeholder.com/32x48/111/fff?text=Capa";
-        
-        const backdropUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w1280${item.poster_path}` : poster);
-        const highResPoster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : poster;
-
-        const div = document.createElement("div"); div.className = "tmdb-result-item";
-        div.innerHTML = `<img src="${poster}" class="tmdb-result-poster"><div class="tmdb-result-text"><strong>${titulo}</strong><span style="font-size:11px;color:gray;">${item.media_type==='movie'?'🎬 Filme':'📺 Série'} • ${ano}</span></div>`;
-        div.onclick = () => selecionarTMDB(item, titulo, highResPoster, backdropUrl, ano);
-        resBox.appendChild(div);
-    });
-    resBox.classList.remove("hidden");
-}
-
-window.selecionarTMDB = function(item, titulo, posterUrlHighRes, backdropUrl, ano) {
-    selectedTMDBMedia = { ...item, titulo: titulo, highResPoster: posterUrlHighRes, backdrop: backdropUrl, ano: ano };
-    document.getElementById("tmdb-search-results").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.add("hidden");
-    document.getElementById("tmdb-selected").classList.remove("hidden"); document.getElementById("tmdb-selected-poster").src = `https://image.tmdb.org/t/p/w92${item.poster_path}`; document.getElementById("tmdb-selected-title").textContent = titulo;
-    if (item.media_type === 'tv') document.getElementById("tmdb-tv-inputs").classList.remove("hidden"); else document.getElementById("tmdb-tv-inputs").classList.add("hidden");
-};
-
-window.limparSelecaoTMDB = function() {
-    selectedTMDBMedia = null; document.getElementById("tmdb-selected").classList.add("hidden"); document.querySelector(".tmdb-search-box").classList.remove("hidden"); document.getElementById("tmdb-search-input").value = "";
-    document.getElementById("tmdb-season").value = ""; document.getElementById("tmdb-episode").value = ""; document.getElementById("share-rating").value = "";
-};
-
-function exibirNotificacaoCopia() {
-    const box = document.getElementById("aviso-container");
-    box.innerHTML = `<div id="copia-aviso">✨ Imagem gerada! Pressione <b>Ctrl+V</b> para colar onde quiser.</div>`;
-}
-
-const esperarImagem = (img) => new Promise((resolve) => {
-    if (img.complete) return resolve();
-    img.onload = resolve;
-    img.onerror = resolve; 
-});
-
-window.gerarECompartilharCard = async function() {
-    const aviso = document.getElementById("gerando-aviso");
-    const tituloCap = document.getElementById("cap-title");
-    const subCap = document.getElementById("cap-subtitle");
-    const boxTop = document.getElementById("cap-box-top");
-    const boxBottom = document.getElementById("cap-box-bottom");
-    
-    const posterCap = document.getElementById("cap-poster");
-    const posterWrap = document.getElementById("cap-poster-wrapper");
-    const bgImg = document.getElementById("cap-bg-img");
-    const bgNoise = document.getElementById("cap-bg-noise");
-    const avatar = document.getElementById("cap-avatar");
-    
-    let nota = document.getElementById("share-rating").value || "S/N";
-
-    const fotoOriginal = avatares[usuarioAtual] || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png";
-    avatar.src = `https://wsrv.nl/?url=${encodeURIComponent(fotoOriginal)}`;
-
-    let enviarConviteChat = false; 
-    let conviteTitulo = "";
-    let conviteUrl = "";
-
-    if (modoShareAtual === 'tmdb') {
-        if (!selectedTMDBMedia) return alert("Selecione um filme ou série primeiro!");
-        aviso.classList.remove("hidden");
-
-        const isTv = selectedTMDBMedia.media_type === 'tv';
-        let anoBase = selectedTMDBMedia.ano || new Date().getFullYear();
-        let subText = isTv ? `${anoBase} • TV SHOW` : `${anoBase} • MOVIES`;
-        
-        tituloCap.textContent = selectedTMDBMedia.titulo;
-
-        if (isTv) {
-            const temp = String(document.getElementById("tmdb-season").value || "1").padStart(2, '0'); 
-            const ep = String(document.getElementById("tmdb-episode").value || "1").padStart(2, '0');
-            
-            boxTop.innerHTML = `S${temp}E${ep}`;
-            boxBottom.textContent = "JUST WATCHED";
-        } else {
-            boxTop.innerHTML = `★ ${nota}`;
-            boxBottom.textContent = "MY RATING";
-        }
-        
-        subCap.textContent = subText;
-
-        posterWrap.style.display = "block";
-        posterWrap.style.width = "220px"; 
-        posterCap.style.aspectRatio = "2/3"; 
-        
-        bgImg.style.display = "block";
-        bgNoise.style.opacity = "0.5"; 
-        bgImg.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.backdrop)}`;
-        posterCap.src = `https://wsrv.nl/?url=${encodeURIComponent(selectedTMDBMedia.highResPoster)}`;
-
-    } else {
-        const txtLivre = document.getElementById("livre-title-input").value.trim();
-        const urlLivre = document.getElementById("livre-url-input").value.trim();
-        if (!txtLivre) return alert("Digite o que vocês assistiram!");
-        aviso.classList.remove("hidden");
-
-        tituloCap.textContent = txtLivre;
-        subCap.textContent = "LIVRE • VÍDEO OU ESPORTE";
-
-        boxTop.innerHTML = `★ ${nota}`;
-        boxBottom.textContent = "MY RATING";
-
-        const extrairIdYoutube = (url) => {
-            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
-            return (match && match[2].length === 11) ? match[2] : null;
-        };
-        const ytId = extrairIdYoutube(urlLivre);
-
-        if (ytId) {
-            const ytThumb = `https://wsrv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`)}`;
-            
-            // NOVO COMANDO: Para o YouTube não ter poster, apenas a foto de fundo!
-            posterWrap.style.display = "none";
-            
-            bgImg.style.display = "block";
-            bgNoise.style.opacity = "0.5"; 
-            bgImg.src = ytThumb;
-        } else {
-            posterWrap.style.display = "none";
-            bgImg.style.display = "none";
-            bgNoise.style.opacity = "1";
-        }
-
-        enviarConviteChat = true;
-        conviteTitulo = txtLivre;
-        conviteUrl = urlLivre;
-    }
-
-    if (tituloCap.textContent.length > 55) {
-        tituloCap.style.fontSize = "26px";
-    } else if (tituloCap.textContent.length > 30) {
-        tituloCap.style.fontSize = "32px";
-    } else {
-        tituloCap.style.fontSize = "40px";
-    }
-
-    try {
-        const promessas = [esperarImagem(avatar)];
-        if(bgImg.style.display !== "none" && bgImg.src) promessas.push(esperarImagem(bgImg));
-        if(posterWrap.style.display !== "none" && posterCap.src) promessas.push(esperarImagem(posterCap));
-        await Promise.all(promessas);
-
-        const promiseBlob = new Promise(async (resolve, reject) => {
-            try {
-                const cardElement = document.getElementById("capture-container");
-                const canvas = await html2canvas(cardElement, { scale: 2, useCORS: true, backgroundColor: '#0b0c10', allowTaint: true });
-                canvas.toBlob((blob) => {
-                    if (blob) resolve(blob);
-                    else reject(new Error("Falha ao criar a imagem"));
-                }, 'image/png');
-            } catch (e) { reject(e); }
-        });
-
-        const clipboardItem = new ClipboardItem({ 'image/png': promiseBlob });
-        await navigator.clipboard.write([clipboardItem]);
-        
-        exibirNotificacaoCopia();
-
-        if (enviarConviteChat) {
-            await addDoc(collection(db, "mensagens"), { 
-                tipo: "convite_avaliacao", 
-                titulo: conviteTitulo,
-                url: conviteUrl,
-                autor: usuarioAtual, 
-                hora: serverTimestamp(), 
-                lida: false 
-            });
-        }
-
-    } catch (err) {
-        console.error("Erro no Clipboard:", err);
-        alert("O seu navegador bloqueou a cópia automática da imagem. Tente novamente clicando no botão!");
-    } finally {
-        fecharModalShare();
-        aviso.classList.add("hidden");
-    }
-};
-
-/* ─────────────────────────────────────────
    TELA CHEIA, ARRASTE DO CHAT E MENSAGENS
 ───────────────────────────────────────── */
 window.toggleFullScreen = function() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err=>err); else document.exitFullscreen(); };
@@ -420,13 +172,10 @@ document.addEventListener("mouseup", () => { if (isDragging) { isDragging = fals
 document.addEventListener("fullscreenchange", () => { const chatBox = document.getElementById("chat-box"); if (document.fullscreenElement) document.body.classList.add("fullscreen-active"); else document.body.classList.remove("fullscreen-active"); setTimeout(() => { if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 100); });
 
 window.excluirMensagem = async function(idMsg) { if(confirm("Apagar?")) await deleteDoc(doc(db, "mensagens", idMsg)); };
-window.editarMensagem = async function(idMsg) { const atual = document.getElementById(`texto-${idMsg}`).innerText; const novo = prompt("Editar:", atual); if (novo && novo.trim() !== "" && novo !== atual) await updateDoc(doc(db, "mensagens", idMsg), { texto: novo, editado: true }); };
 window.excluirFigurinhaDaGaveta = async function(idFig) { if(confirm("Remover da gaveta?")) await deleteDoc(doc(db, "gaveta_figurinhas", idFig)); };
 
-function esconderPaineis() { document.getElementById("emoji-picker").classList.add("hidden"); document.getElementById("sticker-picker").classList.add("hidden"); }
-window.toggleEmojiPicker = function() { document.getElementById("emoji-picker").classList.toggle("hidden"); document.getElementById("sticker-picker").classList.add("hidden"); };
-window.toggleStickerPicker = function() { document.getElementById("sticker-picker").classList.toggle("hidden"); document.getElementById("emoji-picker").classList.add("hidden"); };
-document.getElementById("emoji-picker").addEventListener('emoji-click', event => { const i = document.getElementById("message-input"); i.value += event.detail.unicode; i.focus(); });
+function esconderPaineis() { document.getElementById("sticker-picker").classList.add("hidden"); }
+window.toggleStickerPicker = function() { document.getElementById("sticker-picker").classList.toggle("hidden"); };
 
 window.prepararResposta = function(idMsg, autor, texto, tipo) { respondendoA = { id: idMsg, autor: autor, texto: texto, tipo: tipo }; document.getElementById("reply-preview-author").textContent = autor; document.getElementById("reply-preview-text").textContent = tipo === 'figurinha' ? '🖼️ Figurinha' : texto; document.getElementById("reply-preview-container").classList.remove("hidden"); document.getElementById("message-input").focus(); };
 window.cancelarResposta = function() { respondendoA = null; document.getElementById("reply-preview-container").classList.add("hidden"); };
@@ -456,13 +205,6 @@ window.salvarNovaFigurinha = async function(event) {
     }; reader.readAsDataURL(file);
 };
 
-window.abrirModoLivrePreenchido = function(titulo, url) {
-    abrirCompartilhamento();
-    mudarModoShare('livre');
-    document.getElementById("livre-title-input").value = titulo || "";
-    if(url && url !== "undefined") document.getElementById("livre-url-input").value = url;
-};
-
 function escapeHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str)
@@ -478,12 +220,8 @@ function formatarDataHora(ts) { if(!ts) return ""; const d = ts.toDate?ts.toDate
 document.getElementById("chat-box").addEventListener("click", (e) => {
     const btnExcluir = e.target.closest(".btn-excluir");
     if (btnExcluir) { excluirMensagem(btnExcluir.dataset.id); return; }
-    const btnEditar = e.target.closest(".btn-editar");
-    if (btnEditar) { editarMensagem(btnEditar.dataset.id); return; }
     const btnResponder = e.target.closest(".btn-responder");
     if (btnResponder) { prepararResposta(btnResponder.dataset.id, btnResponder.dataset.autor, btnResponder.dataset.texto, btnResponder.dataset.tipo); return; }
-    const btnAvaliar = e.target.closest(".btn-avaliar-tambem");
-    if (btnAvaliar) { abrirModoLivrePreenchido(btnAvaliar.dataset.titulo, btnAvaliar.dataset.url); return; }
 });
 
 let isInitialLoad = true;
@@ -491,7 +229,7 @@ let unsubMensagens = null;
 function carregarMensagens() {
     if (unsubMensagens) { unsubMensagens(); unsubMensagens = null; }
     unsubMensagens = onSnapshot(query(collection(db, "mensagens"), orderBy("hora", "desc"), limit(50)), (snap) => {
-        if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':(m.tipo==='convite_avaliacao'?'Novo convite de avaliação!':m.texto)}); } }); }
+        if (!isInitialLoad) { snap.docChanges().forEach((c) => { if(c.type==="added"){ const m=c.doc.data(); if(m.autor!==usuarioAtual && document.hidden && Notification.permission==="granted") new Notification(`De ${m.autor}`, {body:m.tipo==='figurinha'?'🖼️ Figurinha':m.texto}); } }); }
         const box = document.getElementById("chat-box"); box.innerHTML = "";
         const todas = []; snap.forEach((d) => todas.push({ id: d.id, ...d.data() })); todas.reverse();
         todas.forEach((m) => {
@@ -506,26 +244,15 @@ function carregarMensagens() {
             let btnAct = "";
             let cont = "";
 
-            if (m.tipo === "convite_avaliacao") {
-                const tituloSeguro = escapeHtml(m.titulo);
-                cont = `<div style="text-align:center;">
-                            <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:4px;">🎬 Acabei de avaliar:</div>
-                            <strong style="color:#ffcc00; font-size:14px; display:block; margin-bottom:8px;">${tituloSeguro}</strong>
-                            <button class="btn-avaliar-tambem" data-titulo="${tituloSeguro}" data-url="${escapeHtml(m.url||"")}" style="background:#5865F2; color:white; border:none; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; width:100%;">Avaliar também 📝</button>
-                        </div>`;
-                if (isOwn) btnAct = `<div class="msg-actions"><button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-            } else {
-                const txtSeguro = escapeHtml(m.texto || "");
-                const bResp = `<button class="btn-action btn-responder" data-id="${m.id}" data-autor="${autorSeguro}" data-texto="${txtSeguro}" data-tipo="${escapeHtml(m.tipo)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
-                
-                if (isOwn) {
-                    if(m.tipo==="figurinha") btnAct = `<div class="msg-actions">${bResp}<button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-                    else btnAct = `<div class="msg-actions">${bResp}<button class="btn-action btn-editar" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M8.5 1.5l2 2L4 10H2V8L8.5 1.5z"/></svg></button><button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
-                } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
+            const txtSeguro = escapeHtml(m.texto || "");
+            const bResp = `<button class="btn-action btn-responder" data-id="${m.id}" data-autor="${autorSeguro}" data-texto="${txtSeguro}" data-tipo="${escapeHtml(m.tipo)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>`;
+            
+            if (isOwn) {
+                btnAct = `<div class="msg-actions">${bResp}<button class="btn-action btn-excluir" data-id="${m.id}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"><path d="M2 3h8M5 3V2h2v1M4.5 3v6M7.5 3v6M3 3l.5 7h5L9 3"/></svg></button></div>`;
+            } else { btnAct = `<div class="msg-actions">${bResp}</div>`; }
 
-                cont = m.tipo==="figurinha" ? `<img src="${escapeHtml(m.url)}" class="sticker-img">` : `<span id="texto-${m.id}">${escapeHtml(m.texto||"")}</span>${m.editado?' <span class="msg-editado">(editado)</span>':''}`;
-                if (m.resposta) cont = `<div class="reply-block"><strong>${escapeHtml(m.resposta.autor)}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':escapeHtml(m.resposta.texto)}</div>` + cont;
-            }
+            cont = m.tipo==="figurinha" ? `<img src="${escapeHtml(m.url)}" class="sticker-img">` : `<span id="texto-${m.id}">${escapeHtml(m.texto||"")}</span>`;
+            if (m.resposta) cont = `<div class="reply-block"><strong>${escapeHtml(m.resposta.autor)}</strong>${m.resposta.tipo==='figurinha'?'🖼️ Figurinha':escapeHtml(m.resposta.texto)}</div>` + cont;
 
             if (isOwn) cont += `<span class="msg-status"><svg viewBox="0 0 24 24" fill="none" stroke="${m.lida?"#3ba55c":"rgba(255,255,255,0.4)"}" stroke-width="2.5"><path d="M18 6L7 17l-5-5"/><path d="M22 10l-7.5 7.5L13 16"/></svg></span>`;
 
