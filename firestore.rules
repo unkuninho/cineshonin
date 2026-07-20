@@ -1,51 +1,81 @@
 rules_version = '2';
 
-// Regras sugeridas para o projeto "createseriesapp".
-// Isso NÃO vai dentro do app.js — precisa ser colado em:
-// Firebase Console > Firestore Database > Regras (ou via `firebase deploy --only firestore:rules`)
+// Regras do projeto "createseriesapp".
+// Precisam ser coladas em: Firebase Console > Firestore Database > Regras
+// (ou via `firebase deploy --only firestore:rules`)
 //
-// Como o app não usa Firebase Authentication, não há como o Firestore saber
-// "quem" está fazendo a requisição. Estas regras apenas garantem que os dados
-// gravados têm o formato esperado, mas QUALQUER pessoa com o link ainda
-// consegue ler/escrever (isso é uma limitação de não ter login).
-// Se quiser bloquear de verdade para só vocês dois, o ideal é adicionar
-// Firebase Authentication (ex: login anônimo + lista de UIDs permitidos).
+// MODELO DE AUTENTICAÇÃO LEVE (PIN + Auth anônimo):
+// O app não tem login com senha/e-mail. Em vez disso, cada pessoa digita um
+// PIN de 4 dígitos na primeira vez que usa o app em um dispositivo. O PIN
+// nunca é comparado no cliente: o hash SHA-256 digitado é enviado dentro do
+// documento de sessão, e estas regras comparam esse hash com o hash salvo
+// em /pins/{nome} usando get(). A coleção /pins tem "allow read: if false",
+// então o cliente NUNCA consegue ler os hashes salvos — só as regras podem
+// consultá-los internamente. Isso impede que alguém sem o PIN crie uma
+// sessão válida, mesmo sabendo os nomes "Kunin"/"Shirlei".
+//
+// IMPORTANTE: como não há Cloud Functions, os documentos de /pins precisam
+// ser criados manualmente uma única vez pelo Firebase Console (veja
+// instruções no README / conversa). Depois de criados, ninguém mais
+// consegue lê-los nem sobrescrevê-los pelo app.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Hashes dos PINs. Nunca legível nem gravável pelo cliente.
+    match /pins/{nome} {
+      allow read, write: if false;
+    }
+
+    // Mapeia auth.uid -> nome ("Kunin"/"Shirlei"), criado só se o hash
+    // enviado bater com o hash salvo em /pins/{nome}.
+    match /sessions/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.nome in ['Kunin','Shirlei']
+                    && request.resource.data.hash ==
+                       get(/databases/$(database)/documents/pins/$(request.resource.data.nome)).data.hash;
+    }
+
+    function nomeDaSessao() {
+      return get(/databases/$(database)/documents/sessions/$(request.auth.uid)).data.nome;
+    }
+
     match /mensagens/{msgId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['tipo','autor','hora'])
-                    && request.resource.data.autor in ['Kunin','Shirlei']
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['tipo','autor','hora'])
+                    && request.resource.data.autor == nomeDaSessao()
                     && request.resource.data.tipo in ['texto','figurinha','convite_avaliacao'];
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['lida','texto','editado']);
-      allow delete: if true;
+      allow update: if request.auth != null
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['lida','texto','editado']);
+      allow delete: if request.auth != null;
     }
 
     match /gaveta_figurinhas/{figId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['url','hora'])
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['url','hora'])
                     && request.resource.data.url is string
                     && request.resource.data.url.size() < 1400000; // ~1MB base64
-      allow delete: if true;
+      allow delete: if request.auth != null;
       allow update: if false;
     }
 
     match /presenca/{nome} {
-      allow read: if true;
-      allow write: if nome in ['Kunin','Shirlei'];
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && nome == nomeDaSessao();
     }
 
     match /chamada/{salaId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
 
       match /offerCandidates/{candId} {
-        allow read, write: if true;
+        allow read, write: if request.auth != null;
       }
       match /answerCandidates/{candId} {
-        allow read, write: if true;
+        allow read, write: if request.auth != null;
       }
     }
 

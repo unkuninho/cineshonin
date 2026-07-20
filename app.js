@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, deleteDoc, updateDoc, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, deleteDoc, updateDoc, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4ng6qnK6dZ4U2WKcxu5bEaBJRhVnw0YM",
@@ -11,9 +12,134 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 let usuarioAtual = "";
-let respondendoA = null; 
+let respondendoA = null;
+
+/* ─────────────────────────────────────────
+   UI: modais customizados e toasts
+   (substituem confirm()/alert() nativos)
+───────────────────────────────────────── */
+function showModal({ title, message, inputType = null, buttons }) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "custom-modal-overlay";
+        const inputHtml = inputType
+            ? `<input type="${inputType}" class="modal-input" id="modal-input-field" maxlength="4" inputmode="numeric" autocomplete="off"><p class="modal-error" id="modal-error-msg"></p>`
+            : "";
+        overlay.innerHTML = `
+            <div class="custom-modal">
+                <h3>${title}</h3>
+                ${message ? `<p style="margin:-8px 0 0;font-size:13px;color:rgba(255,255,255,0.6)">${message}</p>` : ""}
+                ${inputHtml}
+                <div class="modal-buttons-row">
+                    ${buttons.map((b, i) => `<button class="modal-btn ${b.style || "secondary"}" data-i="${i}">${b.label}</button>`).join("")}
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const inputEl = overlay.querySelector("#modal-input-field");
+        if (inputEl) setTimeout(() => inputEl.focus(), 50);
+
+        function fechar(valor) { overlay.remove(); resolve(valor); }
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) fechar(null);
+            const btn = e.target.closest(".modal-btn");
+            if (btn) {
+                const escolha = buttons[Number(btn.dataset.i)];
+                fechar(inputEl ? { valor: escolha.value, texto: inputEl.value } : escolha.value);
+            }
+        });
+        if (inputEl) {
+            inputEl.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    const confirmBtn = buttons.findIndex(b => b.value === true || b.style === "primary" || b.style === "success");
+                    fechar({ valor: buttons[confirmBtn >= 0 ? confirmBtn : buttons.length - 1].value, texto: inputEl.value });
+                }
+            });
+        }
+    });
+}
+
+function confirmModal(title, message, tipoBotaoOk = "danger") {
+    return showModal({
+        title, message,
+        buttons: [{ label: "Cancelar", value: false, style: "secondary" }, { label: "Confirmar", value: true, style: tipoBotaoOk }]
+    });
+}
+
+function alertModal(title, message) {
+    return showModal({ title, message, buttons: [{ label: "Ok", value: true, style: "primary" }] });
+}
+
+async function promptPinModal(nome, erro = "") {
+    const resultado = await showModal({
+        title: `PIN de ${nome}`,
+        message: erro || "Digite o PIN de 4 dígitos para entrar.",
+        inputType: "password",
+        buttons: [{ label: "Cancelar", value: false, style: "secondary" }, { label: "Entrar", value: true, style: "primary" }]
+    });
+    if (!resultado || !resultado.valor) return null;
+    return (resultado.texto || "").trim();
+}
+
+function mostrarToast(msg, tipo = "erro") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+    const t = document.createElement("div");
+    t.className = `toast toast-${tipo}`;
+    t.textContent = msg;
+    container.appendChild(t);
+    requestAnimationFrame(() => t.classList.add("show"));
+    setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3800);
+}
+
+/* ─────────────────────────────────────────
+   AUTENTICAÇÃO LEVE (PIN + Firebase Auth anônimo)
+   O PIN não é validado no cliente: o hash SHA-256
+   digitado é comparado com o hash salvo em /pins/{nome}
+   dentro das regras do Firestore (get() nas rules).
+   A coleção /pins não pode ser lida diretamente pelo
+   cliente — só as regras conseguem consultá-la.
+───────────────────────────────────────── */
+async function sha256Hex(texto) {
+    const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+    return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+window.selecionarCard = async function(nome) {
+    let erro = "";
+    while (true) {
+        const pin = await promptPinModal(nome, erro);
+        if (pin === null) return; // cancelou
+        if (!/^\d{4}$/.test(pin)) { erro = "O PIN precisa ter 4 números."; continue; }
+
+        try {
+            if (!auth.currentUser) await signInAnonymously(auth);
+            const hash = await sha256Hex(pin);
+            await setDoc(doc(db, "sessions", auth.currentUser.uid), { nome, hash, criadoEm: serverTimestamp() });
+            entrarNaSala(nome);
+            return;
+        } catch (e) {
+            erro = "PIN incorreto. Tente de novo.";
+        }
+    }
+};
+
+// Se o navegador já tem uma sessão válida (PIN já digitado antes
+// neste dispositivo), pula a tela de login automaticamente.
+function checarSessaoExistente() {
+    onAuthStateChanged(auth, async (user) => {
+        if (!user || usuarioAtual) return;
+        try {
+            const snap = await getDoc(doc(db, "sessions", user.uid));
+            if (snap.exists() && snap.data().nome) entrarNaSala(snap.data().nome);
+        } catch (e) { /* sem sessão válida ainda, mantém tela de login */ }
+    });
+}
+checarSessaoExistente();
 
 const avatares = {
     "Kunin": "https://i.pinimg.com/736x/7e/f3/b1/7ef3b103fba3f0a99663554bc7b8ed71.jpg",
@@ -39,7 +165,7 @@ window.iniciarCompartilhamento = async function() {
     const btnShare = document.getElementById("btn-share");
     if (localStream) { pararTransmissao(); return; }
     try { localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
-    } catch (erro) { return; }
+    } catch (erro) { mostrarToast("Compartilhamento cancelado ou não permitido."); return; }
 
     document.getElementById("screen-video").srcObject = localStream; document.getElementById("screen-video").classList.remove("hidden");
     document.getElementById("sem-transmissao").classList.add("hidden");
@@ -162,7 +288,15 @@ window.toggleFullScreen = function() { if (!document.fullscreenElement) document
 window.mudarTransparencia = function(valor) { document.documentElement.style.setProperty('--bg-alpha', valor); };
 window.toggleLeftPanel = function() { document.getElementById("left-panel-wrapper").classList.toggle("minimized"); };
 
-window.apagarHistorico = async function() { if(confirm("ATENÇÃO: Apagar tudo?")) { const snap = await getDocs(query(collection(db, "mensagens"))); snap.forEach(d => deleteDoc(d.ref)); } };
+window.apagarHistorico = async function() {
+    const ok = await confirmModal("Apagar tudo?", "Isso apaga todo o histórico de mensagens para sempre. Não dá pra desfazer.");
+    if (!ok) return;
+    try {
+        const snap = await getDocs(query(collection(db, "mensagens")));
+        snap.forEach(d => deleteDoc(d.ref));
+        mostrarToast("Histórico apagado.", "ok");
+    } catch (e) { mostrarToast("Não foi possível apagar o histórico."); }
+};
 
 const overlayPanel = document.getElementById("overlay-panel"); const dragHandle = document.getElementById("drag-handle");
 let isDragging = false; let dragOffsetX = 0; let dragOffsetY = 0;
@@ -171,16 +305,33 @@ document.addEventListener("mousemove", (e) => { if (!isDragging) return; let new
 document.addEventListener("mouseup", () => { if (isDragging) { isDragging = false; overlayPanel.style.transition = "background 0.1s ease"; } });
 document.addEventListener("fullscreenchange", () => { const chatBox = document.getElementById("chat-box"); if (document.fullscreenElement) document.body.classList.add("fullscreen-active"); else document.body.classList.remove("fullscreen-active"); setTimeout(() => { if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 100); });
 
-window.excluirMensagem = async function(idMsg) { if(confirm("Apagar?")) await deleteDoc(doc(db, "mensagens", idMsg)); };
-window.excluirFigurinhaDaGaveta = async function(idFig) { if(confirm("Remover da gaveta?")) await deleteDoc(doc(db, "gaveta_figurinhas", idFig)); };
+window.excluirMensagem = async function(idMsg) {
+    if (!(await confirmModal("Apagar mensagem?", "Essa ação não pode ser desfeita."))) return;
+    try { await deleteDoc(doc(db, "mensagens", idMsg)); } catch (e) { mostrarToast("Não foi possível apagar a mensagem."); }
+};
+window.excluirFigurinhaDaGaveta = async function(idFig) {
+    if (!(await confirmModal("Remover figurinha?", "Ela some da gaveta para sempre."))) return;
+    try { await deleteDoc(doc(db, "gaveta_figurinhas", idFig)); } catch (e) { mostrarToast("Não foi possível remover a figurinha."); }
+};
 
 function esconderPaineis() { document.getElementById("sticker-picker").classList.add("hidden"); }
 window.toggleStickerPicker = function() { document.getElementById("sticker-picker").classList.toggle("hidden"); };
 
 window.prepararResposta = function(idMsg, autor, texto, tipo) { respondendoA = { id: idMsg, autor: autor, texto: texto, tipo: tipo }; document.getElementById("reply-preview-author").textContent = autor; document.getElementById("reply-preview-text").textContent = tipo === 'figurinha' ? '🖼️ Figurinha' : texto; document.getElementById("reply-preview-container").classList.remove("hidden"); document.getElementById("message-input").focus(); };
 window.cancelarResposta = function() { respondendoA = null; document.getElementById("reply-preview-container").classList.add("hidden"); };
-window.enviarMensagem = async function() { const i = document.getElementById("message-input"); const t = i.value; if(t.trim()==="") return; try { await addDoc(collection(db, "mensagens"), { tipo: "texto", texto: t, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA||null }); i.value = ""; esconderPaineis(); cancelarResposta(); } catch(e){} };
-window.enviarFigurinhaSalva = async function(base64) { try { await addDoc(collection(db, "mensagens"), { tipo: "figurinha", url: base64, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA||null }); esconderPaineis(); cancelarResposta(); } catch(e){} };
+window.enviarMensagem = async function() {
+    const i = document.getElementById("message-input"); const t = i.value; if (t.trim() === "") return;
+    try {
+        await addDoc(collection(db, "mensagens"), { tipo: "texto", texto: t, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA || null });
+        i.value = ""; esconderPaineis(); cancelarResposta();
+    } catch (e) { mostrarToast("Mensagem não enviada. Verifique sua conexão."); }
+};
+window.enviarFigurinhaSalva = async function(base64) {
+    try {
+        await addDoc(collection(db, "mensagens"), { tipo: "figurinha", url: base64, autor: usuarioAtual, hora: serverTimestamp(), lida: false, resposta: respondendoA || null });
+        esconderPaineis(); cancelarResposta();
+    } catch (e) { mostrarToast("Figurinha não enviada. Verifique sua conexão."); }
+};
 
 function carregarGavetaFigurinhas() {
     onSnapshot(query(collection(db, "gaveta_figurinhas"), orderBy("hora", "desc"), limit(30)), (snap) => {
@@ -197,11 +348,12 @@ function carregarGavetaFigurinhas() {
 
 window.salvarNovaFigurinha = async function(event) {
     const file = event.target.files[0]; if (!file) return; event.target.value = '';
-    if (file.size > 650 * 1024) return alert("Imagem muito grande! Até 650KB.");
+    if (file.size > 650 * 1024) { alertModal("Imagem muito grande", "Escolha uma imagem de até 650KB."); return; }
     const reader = new FileReader();
     reader.onloadend = async function() {
         const base64 = reader.result;
-        try { await addDoc(collection(db, "gaveta_figurinhas"), { url: base64, hora: serverTimestamp() }); enviarFigurinhaSalva(base64); } catch(e){}
+        try { await addDoc(collection(db, "gaveta_figurinhas"), { url: base64, hora: serverTimestamp() }); enviarFigurinhaSalva(base64); }
+        catch (e) { mostrarToast("Não foi possível salvar a figurinha."); }
     }; reader.readAsDataURL(file);
 };
 
